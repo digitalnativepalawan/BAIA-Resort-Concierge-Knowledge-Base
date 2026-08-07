@@ -108,6 +108,7 @@ export interface GuestRequest {
 
 export interface ConversationSession {
   id: string;
+  session_token?: string;
   guestLabel: string;
   room?: string;
   lastMessage: string;
@@ -115,6 +116,12 @@ export interface ConversationSession {
   status: 'active' | 'needs_staff' | 'closed';
   messageCount: number;
   messages: ChatMessage[];
+}
+
+export interface GuestConversationResponse {
+  conversation_id: string;
+  session_token: string;
+  status: string;
 }
 
 export interface StoredMessage {

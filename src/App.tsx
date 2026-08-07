@@ -360,11 +360,14 @@ export default function App() {
 
       stopSpeech();
 
-      // Ensure we have a conversation ID
+      // Ensure we have a conversation ID and session token
       let conversationId = conversationService.getConversationId();
-      if (!conversationId) {
+      let sessionToken = conversationService.getSessionToken();
+      if (!conversationId || !sessionToken) {
         try {
-          conversationId = await conversationService.ensureGuestConversation();
+          const session = await conversationService.ensureGuestConversation();
+          conversationId = session.conversationId;
+          sessionToken = session.sessionToken;
         } catch (err) {
           console.warn('Failed to create conversation:', err);
         }
@@ -378,8 +381,8 @@ export default function App() {
       };
 
       setMessages((prev) => [...prev, userMsg]);
-      if (conversationId) {
-        conversationService.saveChatMessage(conversationId, userMsg);
+      if (conversationId && sessionToken) {
+        conversationService.saveChatMessage(conversationId, sessionToken, userMsg);
       }
       addLog(`[GUEST INPUT]: "${promptText}"`, 'info');
 
@@ -392,10 +395,6 @@ export default function App() {
           text: m.text
         }));
 
-        const effectiveOpenRouterKey = settings.openrouterApiKey?.trim() || '';
-
-        // Server-side knowledge grounding: the server fetches knowledge docs from PocketBase
-        // No client-side grounding needed - pass the base system instruction
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
 
         const response = await fetch('/api/chat', {
@@ -405,11 +404,12 @@ export default function App() {
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            openrouterApiKey: effectiveOpenRouterKey || undefined,
             model: selectedModel,
             prompt: promptText,
             history: historyForApi,
-            systemInstruction: settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION
+            systemInstruction: settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION,
+            conversation_id: conversationId,
+            session_token: sessionToken
           })
         });
 
@@ -435,8 +435,8 @@ export default function App() {
         };
 
         setMessages((prev) => [...prev, talaMsg]);
-        if (conversationId) {
-          conversationService.saveChatMessage(conversationId, talaMsg);
+        if (conversationId && sessionToken) {
+          conversationService.saveChatMessage(conversationId, sessionToken, talaMsg);
         }
         addLog(`[ TALA RESPONSE DELIVERED ]`, 'success');
         soundEffects.playResponseChime();
@@ -652,7 +652,7 @@ export default function App() {
                 knowledgeFiles={knowledgeFiles}
                 guestRequests={guestRequests}
                 hasServerOpenRouterKey={hasServerOpenRouterKey}
-                hasCustomKey={Boolean(settings.openrouterApiKey || settings.customApiKey)}
+                hasCustomKey={false}
               />
             }
           />

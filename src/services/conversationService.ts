@@ -2,6 +2,7 @@ import { ChatMessage, ConversationSession } from '../types';
 import { pb } from '../lib/pocketbase';
 
 const GUEST_CONVERSATION_KEY = 'tala_guest_conversation_id';
+const GUEST_SESSION_TOKEN_KEY = 'tala_guest_session_token';
 
 function getGuestConversationId(): string | null {
   try {
@@ -11,72 +12,108 @@ function getGuestConversationId(): string | null {
   }
 }
 
-function setGuestConversationId(id: string) {
+function getGuestSessionToken(): string | null {
   try {
-    localStorage.setItem(GUEST_CONVERSATION_KEY, id);
+    return localStorage.getItem(GUEST_SESSION_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function setGuestSession(conversationId: string, sessionToken: string) {
+  try {
+    localStorage.setItem(GUEST_CONVERSATION_KEY, conversationId);
+    localStorage.setItem(GUEST_SESSION_TOKEN_KEY, sessionToken);
+  } catch {}
+}
+
+function clearGuestSession() {
+  try {
+    localStorage.removeItem(GUEST_CONVERSATION_KEY);
+    localStorage.removeItem(GUEST_SESSION_TOKEN_KEY);
   } catch {}
 }
 
 export const conversationService = {
-  ensureGuestConversation: async (guestLabel?: string, room?: string): Promise<string> => {
+  ensureGuestConversation: async (guestLabel?: string, room?: string): Promise<{ conversationId: string; sessionToken: string }> => {
     const existingId = getGuestConversationId();
-    if (existingId) {
+    const existingToken = getGuestSessionToken();
+
+    if (existingId && existingToken) {
+      // Verify token is still valid by attempting to read messages
       try {
-        await pb.collection('conversations').getOne(existingId);
-        return existingId;
-      } catch {
-        // Record deleted, create new
-        localStorage.removeItem(GUEST_CONVERSATION_KEY);
-      }
+        const res = await fetch(`/api/guest/conversations/${existingId}/messages`, {
+          headers: { 'X-TALA-SESSION': existingToken }
+        });
+        if (res.ok) {
+          return { conversationId: existingId, sessionToken: existingToken };
+        }
+      } catch {}
+      // Token invalid, clear and recreate
+      clearGuestSession();
     }
 
     try {
-      const record = await pb.collection('conversations').create({
-        guest_label: guestLabel || 'Guest',
-        room: room || 'Main Villa',
-        status: 'active'
+      const res = await fetch('/api/guest/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guest_label: guestLabel || 'Guest', room: room || 'Main Villa' })
       });
-      setGuestConversationId(record.id);
-      return record.id;
+
+      if (!res.ok) {
+        throw new Error('Failed to create conversation');
+      }
+
+      const data = await res.json();
+      setGuestSession(data.conversation_id, data.session_token);
+      return { conversationId: data.conversation_id, sessionToken: data.session_token };
     } catch (err) {
-      console.warn('PocketBase: Failed to create guest conversation:', err);
+      console.warn('Failed to create guest conversation:', err);
       throw err;
     }
   },
 
-  saveChatMessage: async (conversationId: string, message: ChatMessage) => {
+  saveChatMessage: async (conversationId: string, sessionToken: string, message: ChatMessage) => {
     try {
-      await pb.collection('messages').create({
-        conversation: conversationId,
-        role: message.role === 'model' ? 'assistant' : message.role,
-        content: message.text,
-        agent_id: 'tala-concierge'
+      await fetch('/api/guest/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          content: message.text,
+          session_token: sessionToken
+        })
       });
     } catch (err) {
-      console.warn('PocketBase: Failed to save chat message:', err);
+      console.warn('Failed to save chat message:', err);
     }
   },
 
-  getConversationMessages: async (conversationId: string): Promise<ChatMessage[]> => {
+  getConversationMessages: async (conversationId: string, sessionToken: string): Promise<ChatMessage[]> => {
     try {
-      const records = await pb.collection('messages').getFullList({
-        filter: `conversation="${conversationId}"`,
-        sort: 'created'
+      const res = await fetch(`/api/guest/conversations/${conversationId}/messages`, {
+        headers: { 'X-TALA-SESSION': sessionToken }
       });
 
-      return records.map((r: any) => ({
-        id: r.id,
-        role: r.role === 'assistant' ? 'model' : (r.role as 'user' | 'model'),
-        text: r.content,
-        timestamp: new Date(r.created).toLocaleTimeString('en-US', { hour12: false })
+      if (!res.ok) return [];
+
+      const data = await res.json();
+      return (data.messages || []).map((m: any) => ({
+        id: m.id,
+        role: m.role === 'assistant' ? 'model' : m.role,
+        text: m.text,
+        timestamp: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false })
       }));
     } catch (err) {
-      console.warn('PocketBase: Failed to get conversation messages:', err);
+      console.warn('Failed to get conversation messages:', err);
       return [];
     }
   },
 
+  // Admin access: uses authenticated PocketBase client directly
   getAllConversations: async (): Promise<ConversationSession[]> => {
+    if (!pb.authStore.isValid) return [];
+
     try {
       const records = await pb.collection('conversations').getFullList({
         sort: '-created'
@@ -92,7 +129,7 @@ export const conversationService = {
           });
           messages = msgRecords.map((r: any) => ({
             id: r.id,
-            role: r.role === 'assistant' ? 'model' : (r.role as 'user' | 'model'),
+            role: r.role === 'assistant' ? 'model' : r.role,
             text: r.content,
             timestamp: new Date(r.created).toLocaleTimeString('en-US', { hour12: false })
           }));
@@ -116,16 +153,17 @@ export const conversationService = {
 
       return sessions;
     } catch (err) {
-      console.warn('PocketBase: Failed to get conversations:', err);
+      console.warn('Failed to get conversations:', err);
       return [];
     }
   },
 
   updateConversationStatus: async (conversationId: string, status: 'active' | 'needs_staff' | 'closed') => {
+    if (!pb.authStore.isValid) return;
     try {
       await pb.collection('conversations').update(conversationId, { status });
     } catch (err) {
-      console.warn('PocketBase: Failed to update conversation status:', err);
+      console.warn('Failed to update conversation status:', err);
     }
   },
 
@@ -146,7 +184,7 @@ export const conversationService = {
           }
         });
       } catch (err) {
-        console.warn('PocketBase: Failed to subscribe to messages:', err);
+        console.warn('Failed to subscribe to messages:', err);
       }
     };
 
@@ -158,5 +196,6 @@ export const conversationService = {
     };
   },
 
-  getConversationId: getGuestConversationId
+  getConversationId: getGuestConversationId,
+  getSessionToken: getGuestSessionToken
 };

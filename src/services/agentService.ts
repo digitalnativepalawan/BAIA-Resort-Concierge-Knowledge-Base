@@ -19,7 +19,7 @@ export interface Agent {
   knowledge_categories: string[];
   skills: any[];
   permissions: string[];
-  status: 'online' | 'offline' | 'maintenance';
+  status: 'online' | 'offline' | 'disabled';
   guest_facing: boolean;
 }
 

@@ -16,7 +16,7 @@
 
 import PocketBase from 'pocketbase';
 
-const POCKETBASE_URL = process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+const POCKETBASE_URL = process.env.POCKETBASE_URL || process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
 
@@ -141,9 +141,15 @@ async function setup() {
           values: ['active', 'needs_staff', 'closed'],
           maxSelect: 1
         }
+      },
+      {
+        name: 'session_token',
+        type: 'text',
+        required: false,
+        options: { min: 0, max: 64 }
       }
     ],
-    indexes: ['created']
+    indexes: ['created', 'session_token']
   });
 
   // 3. Messages collection
@@ -454,7 +460,7 @@ async function setup() {
         type: 'select',
         required: false,
         options: {
-          values: ['online', 'offline', 'maintenance'],
+          values: ['online', 'offline', 'disabled'],
           maxSelect: 1
         }
       },
@@ -518,60 +524,67 @@ async function setup() {
     console.log('  [OK] Created default settings record.');
   }
 
-  // 8. Configure access rules
+  // 8. Configure access rules (PRIVATE by default)
   console.log('\nConfiguring access rules...\n');
 
+  // users: authenticated self OR owner/manager
   await setupAccessRules('users', {
-    list: 'id = @request.auth.id || @request.auth.role = "owner" || @request.auth.role = "manager"',
-    view: 'id = @request.auth.id || @request.auth.role = "owner" || @request.auth.role = "manager"',
+    list: '@request.auth.id != "" && (id = @request.auth.id || @request.auth.role = "owner" || @request.auth.role = "manager")',
+    view: '@request.auth.id != "" && (id = @request.auth.id || @request.auth.role = "owner" || @request.auth.role = "manager")',
     create: false,
-    update: 'id = @request.auth.id || @request.auth.role = "owner"',
+    update: '@request.auth.id != "" && (id = @request.auth.id || @request.auth.role = "owner")',
     delete: '@request.auth.role = "owner"'
   });
 
+  // conversations: authenticated only, no public access
   await setupAccessRules('conversations', {
-    list: '@request.auth.id != "" || true',
-    view: '@request.auth.id != "" || true',
-    create: true,
+    list: '@request.auth.id != ""',
+    view: '@request.auth.id != ""',
+    create: false,
     update: '@request.auth.id != ""',
     delete: '@request.auth.role = "owner" || @request.auth.role = "manager"'
   });
 
+  // messages: authenticated only, no public access
   await setupAccessRules('messages', {
-    list: '@request.auth.id != "" || true',
-    view: '@request.auth.id != "" || true',
-    create: true,
+    list: '@request.auth.id != ""',
+    view: '@request.auth.id != ""',
+    create: false,
     update: '@request.auth.id != ""',
     delete: '@request.auth.role = "owner" || @request.auth.role = "manager"'
   });
 
+  // knowledge_documents: authenticated only
   await setupAccessRules('knowledge_documents', {
-    list: '@request.auth.id != "" || true',
-    view: '@request.auth.id != "" || true',
+    list: '@request.auth.id != ""',
+    view: '@request.auth.id != ""',
     create: '@request.auth.id != ""',
     update: '@request.auth.id != ""',
     delete: '@request.auth.id != ""'
   });
 
+  // guest_requests: authenticated only, no public access
   await setupAccessRules('guest_requests', {
-    list: '@request.auth.id != "" || true',
-    view: '@request.auth.id != "" || true',
-    create: true,
+    list: '@request.auth.id != ""',
+    view: '@request.auth.id != ""',
+    create: false,
     update: '@request.auth.id != ""',
     delete: '@request.auth.id != ""'
   });
 
+  // settings: authenticated only
   await setupAccessRules('settings', {
-    list: '@request.auth.id != "" || true',
-    view: '@request.auth.id != "" || true',
+    list: '@request.auth.id != ""',
+    view: '@request.auth.id != ""',
     create: '@request.auth.role = "owner" || @request.auth.role = "manager"',
     update: '@request.auth.role = "owner" || @request.auth.role = "manager"',
     delete: '@request.auth.role = "owner"'
   });
 
+  // agents: authenticated only
   await setupAccessRules('agents', {
-    list: '@request.auth.id != "" || true',
-    view: '@request.auth.id != "" || true',
+    list: '@request.auth.id != ""',
+    view: '@request.auth.id != ""',
     create: '@request.auth.role = "owner" || @request.auth.role = "manager"',
     update: '@request.auth.role = "owner" || @request.auth.role = "manager"',
     delete: '@request.auth.role = "owner"'
@@ -580,7 +593,8 @@ async function setup() {
   console.log('\n=== Setup Complete ===');
   console.log('Collections created: users, conversations, messages, knowledge_documents, guest_requests, settings, agents');
   console.log('Default TALA agent and settings seeded.');
-  console.log('Access rules configured for all collections.');
+  console.log('Access rules configured: ALL collections are PRIVATE (authenticated only).');
+  console.log('Guest access routes through Express server-side endpoints only.');
 }
 
 setup().catch((err) => {
