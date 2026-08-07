@@ -1,10 +1,8 @@
 import { GuestRequest, GuestRequestStatus } from '../types';
-import { db } from '../lib/firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { pb } from '../lib/pocketbase';
 
 const LOCAL_STORAGE_KEY = 'tala_guest_requests';
 
-// Initial sample request data for resort demonstration if empty
 const INITIAL_DEMO_REQUESTS: GuestRequest[] = [
   {
     id: 'req-101',
@@ -43,7 +41,6 @@ export const requestService = {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) return JSON.parse(saved);
-      // Save initial demo requests on first load
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_REQUESTS));
       return INITIAL_DEMO_REQUESTS;
     } catch (e) {
@@ -64,14 +61,19 @@ export const requestService = {
     const updated = [request, ...current.filter((r) => r.id !== request.id)];
     requestService.saveLocalRequests(updated);
 
-    if (userId) {
-      try {
-        const path = `users/${userId}/guest_requests/${request.id}`;
-        await setDoc(doc(db, path), request);
-      } catch (err) {
-        console.warn('Firestore request sync failed:', err);
-      }
+    try {
+      await pb.collection('guest_requests').create({
+        title: request.title,
+        description: request.description,
+        category: request.category,
+        guest_label: request.guestLabel || 'Guest',
+        room: request.room || 'Main Villa',
+        status: request.status
+      });
+    } catch (err) {
+      console.warn('PocketBase: Failed to save request:', err);
     }
+
     return updated;
   },
 
@@ -82,17 +84,12 @@ export const requestService = {
     );
     requestService.saveLocalRequests(updated);
 
-    if (userId) {
-      try {
-        const reqToUpdate = updated.find((r) => r.id === requestId);
-        if (reqToUpdate) {
-          const path = `users/${userId}/guest_requests/${requestId}`;
-          await setDoc(doc(db, path), reqToUpdate);
-        }
-      } catch (err) {
-        console.warn('Firestore request status update failed:', err);
-      }
+    try {
+      await pb.collection('guest_requests').update(requestId, { status });
+    } catch (err) {
+      console.warn('PocketBase: Failed to update request status:', err);
     }
+
     return updated;
   },
 
@@ -101,39 +98,63 @@ export const requestService = {
     const updated = current.filter((r) => r.id !== requestId);
     requestService.saveLocalRequests(updated);
 
-    if (userId) {
-      try {
-        const path = `users/${userId}/guest_requests/${requestId}`;
-        await deleteDoc(doc(db, path));
-      } catch (err) {
-        console.warn('Firestore request delete failed:', err);
-      }
+    try {
+      await pb.collection('guest_requests').delete(requestId);
+    } catch (err) {
+      console.warn('PocketBase: Failed to delete request:', err);
     }
+
     return updated;
   },
 
   listenRequests: (userId: string, callback: (requests: GuestRequest[]) => void) => {
-    try {
-      const colPath = `users/${userId}/guest_requests`;
-      return onSnapshot(
-        collection(db, colPath),
-        (snapshot) => {
-          const remoteRequests: GuestRequest[] = [];
-          snapshot.forEach((docSnap) => {
-            remoteRequests.push(docSnap.data() as GuestRequest);
-          });
-          if (remoteRequests.length > 0) {
-            remoteRequests.sort((a, b) => b.id.localeCompare(a.id));
-            requestService.saveLocalRequests(remoteRequests);
-            callback(remoteRequests);
-          }
-        },
-        (err) => {
-          console.warn('Firestore listenRequests error:', err);
+    let active = true;
+
+    const load = async () => {
+      if (!active) return;
+      try {
+        const records = await pb.collection('guest_requests').getFullList({
+          sort: '-created'
+        });
+        if (!active) return;
+
+        const requests: GuestRequest[] = records.map((r: any) => ({
+          id: r.id,
+          title: r.title || '',
+          description: r.description || '',
+          category: r.category || 'general',
+          guestLabel: r.guest_label || 'Guest',
+          room: r.room || 'Main Villa',
+          status: r.status || 'new',
+          createdAt: new Date(r.created).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        }));
+
+        if (requests.length > 0) {
+          requestService.saveLocalRequests(requests);
+          callback(requests);
         }
-      );
-    } catch (e) {
-      return () => {};
-    }
+      } catch (err) {
+        console.warn('PocketBase: listenRequests load failed:', err);
+      }
+    };
+
+    load();
+
+    const setupSubscription = async () => {
+      try {
+        await pb.collection('guest_requests').subscribe('*', (event: any) => {
+          if (active) load();
+        });
+      } catch (err) {
+        console.warn('PocketBase: listenRequests subscription failed:', err);
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      active = false;
+      pb.collection('guest_requests').unsubscribe('*');
+    };
   }
 };

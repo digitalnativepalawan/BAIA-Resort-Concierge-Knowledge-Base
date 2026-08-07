@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User } from 'firebase/auth';
+import { TalaUser } from '../services/authService';
 import { ArcReactorHUD } from '../components/ArcReactorHUD';
 import { ConversationStream } from '../components/ConversationStream';
 import { CommandBar } from '../components/CommandBar';
@@ -29,8 +29,8 @@ interface GuestConciergeProps {
   onStopSpeech: () => void;
   continuousListening: boolean;
   onToggleContinuousListening: () => void;
-  currentUser: User | null;
-  onSignIn: () => void;
+  currentUser: TalaUser | null;
+  onLogin: (email: string, password: string) => void;
   onSignOut: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
@@ -54,7 +54,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
   continuousListening,
   onToggleContinuousListening,
   currentUser,
-  onSignIn,
+  onLogin,
   onSignOut,
   soundEnabled,
   onToggleSound,
@@ -100,7 +100,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           {/* Link to Admin Management Console */}
           <Link
             to="/admin"
-            className="px-3 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,240,255,0.1)]"
+            className="px-3 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(240,255,0,0.1)]"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Admin Portal</span>
@@ -111,18 +111,18 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
             <button
               onClick={onSignOut}
               className="p-1.5 rounded-xl bg-[#0a0f1d] border border-emerald-500/40 text-emerald-400 hover:text-red-400 transition-colors"
-              title={`Signed in as ${currentUser.displayName || currentUser.email}. Click to sign out.`}
+              title={`Signed in as ${currentUser.name || currentUser.email}. Click to sign out.`}
             >
               <UserIcon className="w-4 h-4" />
             </button>
           ) : (
-            <button
-              onClick={onSignIn}
+            <Link
+              to="/admin/settings"
               className="p-1.5 rounded-xl bg-[#0a0f1d] border border-[#00f0ff]/30 text-[#00f0ff] hover:bg-[#00f0ff]/20"
-              title="Sign in with Google for cloud sync"
+              title="Admin Login"
             >
               <LogIn className="w-4 h-4" />
-            </button>
+            </Link>
           )}
         </div>
       </header>
@@ -165,7 +165,11 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
 
         {/* Conversation Message Stream */}
         <div className="w-full max-w-2xl min-h-[160px] max-h-[320px] overflow-y-auto rounded-2xl bg-[#080d1a]/80 border border-[#00f0ff]/20 p-4 shadow-xl">
-          <ConversationStream messages={messages} />
+          <ConversationStream
+            messages={messages}
+            onSpeakText={() => {}}
+            isSpeakingNow={talaState === 'SPEAKING'}
+          />
         </div>
 
         {/* Bottom Guest Command Composer */}

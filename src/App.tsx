@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { User } from 'firebase/auth';
 
 import {
   TalaState,
@@ -14,7 +13,7 @@ import {
   GuestRequestStatus
 } from './types';
 
-import { authService } from './services/authService';
+import { authService, TalaUser } from './services/authService';
 import { conversationService } from './services/conversationService';
 import { knowledgeService } from './services/knowledgeService';
 import { settingsService } from './services/settingsService';
@@ -30,7 +29,6 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
 import { soundEffects } from './utils/soundEffects';
 import { cleanTextForSpeech } from './utils/textUtils';
-import { testFirestoreConnection } from './lib/firebase';
 
 const DEFAULT_SYSTEM_INSTRUCTION =
   "You are TALA, the AI concierge for BAIA Resort. You help guests with questions about their stay, the property, local transportation, food, activities, San Vicente, and information contained in the BAIA knowledge base. Speak naturally, warmly, clearly, and concisely. Prioritize information from the supplied BAIA knowledge base. Never invent property information when the knowledge base does not contain the answer. When appropriate, tell the guest that staff can assist.";
@@ -43,7 +41,7 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [hasServerOpenRouterKey, setHasServerOpenRouterKey] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<TalaUser | null>(null);
 
   // Knowledge Files State
   const [knowledgeFiles, setKnowledgeFiles] = useState<KnowledgeFile[]>(() => {
@@ -137,65 +135,56 @@ export default function App() {
     setLogs((prev) => [...prev.slice(-40), newEntry]);
   }, []);
 
-  // Firebase Auth and Connection Initializer
+  // Auth initializer
   useEffect(() => {
-    testFirestoreConnection();
-
     const unsubscribe = authService.subscribeToAuth(async (user) => {
       setCurrentUser(user);
       if (user) {
-        addLog(`[ CLOUD SYNC ]: Authenticated as ${user.displayName || user.email}`, 'success');
-        const remoteSettings = await settingsService.getSettings(user.uid);
-        if (remoteSettings) {
-          setSettings((prev) => ({ ...prev, ...remoteSettings }));
-        }
+        addLog(`[ AUTH ]: Authenticated as ${user.name || user.email}`, 'success');
+        try {
+          const remoteSettings = await settingsService.getSettings(user.id);
+          if (remoteSettings) {
+            setSettings((prev) => ({ ...prev, ...remoteSettings }));
+          }
+        } catch {}
       } else {
-        addLog('[ CLOUD SYNC ]: Guest mode active', 'info');
+        addLog('[ AUTH ]: Guest mode active', 'info');
       }
     });
 
     return () => unsubscribe();
   }, [addLog]);
 
-  // Firestore Real-Time Sync for Chat, Knowledge Docs, and Guest Requests
+  // Knowledge and requests listeners (guest mode - no auth required)
   useEffect(() => {
-    if (!currentUser) return;
-
-    const unsubChat = conversationService.listenChatMessages(currentUser.uid, (remoteMsgs) => {
-      if (remoteMsgs && remoteMsgs.length > 0) {
-        setMessages(remoteMsgs);
-      }
-    });
-
-    const unsubDocs = knowledgeService.listenDocs(currentUser.uid, (remoteDocs) => {
+    const unsubDocs = knowledgeService.listenDocs('guest', (remoteDocs) => {
       setKnowledgeFiles(remoteDocs);
     });
 
-    const unsubRequests = requestService.listenRequests(currentUser.uid, (remoteRequests) => {
+    const unsubRequests = requestService.listenRequests('guest', (remoteRequests) => {
       setGuestRequests(remoteRequests);
     });
 
     return () => {
-      unsubChat();
       unsubDocs();
       unsubRequests();
     };
-  }, [currentUser]);
+  }, []);
 
-  // Sync settings to Firestore
+  // Sync settings to PocketBase
   useEffect(() => {
     if (currentUser) {
-      settingsService.saveSettings(currentUser.uid, settings);
+      settingsService.saveSettings(currentUser.id, settings);
     }
   }, [currentUser, settings]);
 
-  const handleSignIn = useCallback(async () => {
+  const handleLogin = useCallback(async (email: string, password: string) => {
     try {
       soundEffects.playProcessingBeep();
-      await authService.signInWithGoogle();
+      await authService.login(email, password);
       soundEffects.playResponseChime();
     } catch (err: any) {
-      addLog(`Cloud Sync Auth error: ${err.message || err}`, 'error');
+      addLog(`Auth error: ${err.message || err}`, 'error');
       soundEffects.playErrorSound();
     }
   }, [addLog]);
@@ -203,7 +192,7 @@ export default function App() {
   const handleSignOut = useCallback(async () => {
     try {
       await authService.logoutUser();
-      addLog('[ CLOUD SYNC ]: Signed out of Cloud Sync.', 'info');
+      addLog('[ AUTH ]: Signed out.', 'info');
       soundEffects.playProcessingBeep();
     } catch (err: any) {
       addLog(`Logout error: ${err.message || err}`, 'error');
@@ -229,7 +218,7 @@ export default function App() {
         );
       })
       .catch(() => {
-        addLog('Server health check pending or offline mode.', 'warning');
+        addLog('Server health check pending or offline mode.', 'info');
       });
   }, [addLog]);
 
@@ -390,9 +379,7 @@ export default function App() {
       };
 
       setMessages((prev) => [...prev, userMsg]);
-      if (currentUser) {
-        conversationService.saveChatMessage(currentUser.uid, userMsg);
-      }
+      conversationService.saveChatMessage(currentUser?.id || 'guest', userMsg);
       addLog(`[GUEST INPUT]: "${promptText}"`, 'info');
 
       setState('PROCESSING');
@@ -410,10 +397,13 @@ export default function App() {
         let groundedSystemInstruction = settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
         if (knowledgeFiles.length > 0) {
           const docsText = knowledgeFiles
+            .filter((f) => f.content)
             .map((f, idx) => `--- GROUNDED DOCUMENT ${idx + 1} (${f.category || 'General'}): ${f.name} ---\n${f.content}`)
             .join('\n\n');
 
-          groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.`;
+          if (docsText) {
+            groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.`;
+          }
         }
 
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
@@ -455,9 +445,7 @@ export default function App() {
         };
 
         setMessages((prev) => [...prev, talaMsg]);
-        if (currentUser) {
-          conversationService.saveChatMessage(currentUser.uid, talaMsg);
-        }
+        conversationService.saveChatMessage(currentUser?.id || 'guest', talaMsg);
         addLog(`[ TALA RESPONSE DELIVERED ]`, 'success');
         soundEffects.playResponseChime();
 
@@ -478,7 +466,7 @@ export default function App() {
           {
             id: Math.random().toString(36).substring(2, 9),
             role: 'model',
-            text: `⚠️ [TALA CONCIERGE NOTICE]: ${errorText}`,
+            text: `[TALA CONCIERGE NOTICE]: ${errorText}`,
             timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
           }
         ]);
@@ -550,10 +538,8 @@ export default function App() {
       };
 
       recognition.onend = () => {
-        if (state === 'LISTENING') {
-          setState('IDLE');
-          setInterimTranscript('');
-        }
+        setState('IDLE');
+        setInterimTranscript('');
       };
 
       recognition.start();
@@ -582,9 +568,7 @@ export default function App() {
         category
       };
       setKnowledgeFiles((prev) => [newDoc, ...prev]);
-      if (currentUser) {
-        knowledgeService.saveDoc(currentUser.uid, newDoc);
-      }
+      knowledgeService.saveDoc(currentUser?.id || 'guest', newDoc);
       addLog(`Added knowledge doc "${file.name}" under ${category}`, 'success');
     };
     reader.readAsText(file);
@@ -592,27 +576,25 @@ export default function App() {
 
   const handleDeleteKnowledgeFile = useCallback((id: string) => {
     setKnowledgeFiles((prev) => prev.filter((f) => f.id !== id));
-    if (currentUser) {
-      knowledgeService.deleteDoc(currentUser.uid, id);
-    }
+    knowledgeService.deleteDoc(currentUser?.id || 'guest', id);
     addLog(`Deleted knowledge doc ${id}`, 'info');
   }, [currentUser, addLog]);
 
   // Guest Requests Handlers
   const handleSaveRequest = useCallback(async (req: GuestRequest) => {
-    const updated = await requestService.saveRequest(currentUser?.uid || null, req);
+    const updated = await requestService.saveRequest(currentUser?.id || null, req);
     setGuestRequests(updated);
     addLog(`Logged guest request "${req.title}"`, 'success');
   }, [currentUser, addLog]);
 
   const handleUpdateStatus = useCallback(async (id: string, status: GuestRequestStatus) => {
-    const updated = await requestService.updateRequestStatus(currentUser?.uid || null, id, status);
+    const updated = await requestService.updateRequestStatus(currentUser?.id || null, id, status);
     setGuestRequests(updated);
     addLog(`Updated request ${id} status to ${status}`, 'info');
   }, [currentUser, addLog]);
 
   const handleDeleteRequest = useCallback(async (id: string) => {
-    const updated = await requestService.deleteRequest(currentUser?.uid || null, id);
+    const updated = await requestService.deleteRequest(currentUser?.id || null, id);
     setGuestRequests(updated);
     addLog(`Deleted request ${id}`, 'info');
   }, [currentUser, addLog]);
@@ -637,7 +619,7 @@ export default function App() {
                 setSettings((prev) => ({ ...prev, continuousListening: !prev.continuousListening }))
               }
               currentUser={currentUser}
-              onSignIn={handleSignIn}
+              onLogin={handleLogin}
               onSignOut={handleSignOut}
               soundEnabled={settings.soundEnabled}
               onToggleSound={() => setSettings((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
@@ -651,7 +633,7 @@ export default function App() {
           element={
             <AdminLayout
               currentUser={currentUser}
-              onSignIn={handleSignIn}
+              onLogin={handleLogin}
               onSignOut={handleSignOut}
             />
           }
@@ -718,7 +700,7 @@ export default function App() {
                 logs={logs}
                 onClearLogs={() => setLogs([])}
                 currentUser={currentUser}
-                onSignIn={handleSignIn}
+                onLogin={handleLogin}
                 onSignOut={handleSignOut}
                 hasServerOpenRouterKey={hasServerOpenRouterKey}
               />

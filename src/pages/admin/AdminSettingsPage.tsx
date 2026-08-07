@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { TalaSettings, VoiceOption, TelemetryLogEntry } from '../../types';
 import { OpenRouterModelSelector } from '../../components/OpenRouterModelSelector';
 import { TelemetryLog } from '../../components/TelemetryLog';
-import { User } from 'firebase/auth';
+import { TalaUser } from '../../services/authService';
 import {
   Settings,
   Cpu,
@@ -31,8 +32,8 @@ interface AdminSettingsPageProps {
   onTestVoice: () => void;
   logs: TelemetryLogEntry[];
   onClearLogs: () => void;
-  currentUser: User | null;
-  onSignIn: () => void;
+  currentUser: TalaUser | null;
+  onLogin: (email: string, password: string) => void;
   onSignOut: () => void;
   hasServerOpenRouterKey: boolean;
 }
@@ -45,7 +46,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   logs,
   onClearLogs,
   currentUser,
-  onSignIn,
+  onLogin,
   onSignOut,
   hasServerOpenRouterKey
 }) => {
@@ -328,7 +329,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         </div>
       </section>
 
-      {/* SECTION 5: CLOUD SYNC */}
+      {/* SECTION 5: POCKETBASE SYNC */}
       <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-2.5">
@@ -336,8 +337,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
               <Cloud className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Cloud Sync Persistence</h2>
-              <p className="text-xs text-gray-400">Sync settings and knowledge base with Firebase Cloud Storage</p>
+              <h2 className="text-lg font-bold text-white">PocketBase Sync</h2>
+              <p className="text-xs text-gray-400">Sync settings, knowledge, and data with PocketBase backend</p>
             </div>
           </div>
 
@@ -350,13 +351,13 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
               <span>Sign Out</span>
             </button>
           ) : (
-            <button
-              onClick={onSignIn}
+            <Link
+              to="/admin"
               className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff] text-black font-bold text-xs uppercase tracking-wider hover:bg-[#00f0ff]/80 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,240,255,0.3)]"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In with Google</span>
-            </button>
+              <span>Sign In</span>
+            </Link>
           )}
         </div>
 
@@ -364,7 +365,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           <div className="text-xs font-sans">
             <span className="text-gray-400 block">Current Auth State:</span>
             <span className="text-white font-bold">
-              {currentUser ? currentUser.displayName || currentUser.email : 'Guest / Unauthenticated Mode'}
+              {currentUser ? currentUser.name || currentUser.email : 'Guest / Unauthenticated Mode'}
             </span>
           </div>
           <span
@@ -374,7 +375,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                 : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
             }`}
           >
-            {currentUser ? 'Cloud Synced' : 'Local Storage Only'}
+            {currentUser ? 'PocketBase Synced' : 'Local Storage Only'}
           </span>
         </div>
       </section>
@@ -412,7 +413,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                 <span>Clear Logs</span>
               </button>
             </div>
-            <TelemetryLog logs={logs} />
+            <TelemetryLog logs={logs} state="IDLE" hasServerKey={hasServerOpenRouterKey} hasCustomKey={Boolean(settings.openrouterApiKey || settings.customApiKey)} />
           </div>
         )}
       </section>
