@@ -17,30 +17,35 @@ function setGuestConversationId(id: string) {
   } catch {}
 }
 
-async function ensureGuestConversation(): Promise<string> {
-  const existingId = getGuestConversationId();
-  if (existingId) return existingId;
-
-  try {
-    const record = await pb.collection('conversations').create({
-      guest_label: 'Guest',
-      room: 'Main Villa',
-      status: 'active'
-    });
-    setGuestConversationId(record.id);
-    return record.id;
-  } catch (err) {
-    console.warn('PocketBase: Failed to create guest conversation, using fallback ID', err);
-    const fallbackId = `guest-fallback-${Date.now()}`;
-    setGuestConversationId(fallbackId);
-    return fallbackId;
-  }
-}
-
 export const conversationService = {
-  saveChatMessage: async (userId: string, message: ChatMessage) => {
+  ensureGuestConversation: async (guestLabel?: string, room?: string): Promise<string> => {
+    const existingId = getGuestConversationId();
+    if (existingId) {
+      try {
+        await pb.collection('conversations').getOne(existingId);
+        return existingId;
+      } catch {
+        // Record deleted, create new
+        localStorage.removeItem(GUEST_CONVERSATION_KEY);
+      }
+    }
+
     try {
-      const conversationId = await ensureGuestConversation();
+      const record = await pb.collection('conversations').create({
+        guest_label: guestLabel || 'Guest',
+        room: room || 'Main Villa',
+        status: 'active'
+      });
+      setGuestConversationId(record.id);
+      return record.id;
+    } catch (err) {
+      console.warn('PocketBase: Failed to create guest conversation:', err);
+      throw err;
+    }
+  },
+
+  saveChatMessage: async (conversationId: string, message: ChatMessage) => {
+    try {
       await pb.collection('messages').create({
         conversation: conversationId,
         role: message.role === 'model' ? 'assistant' : message.role,
@@ -52,93 +57,105 @@ export const conversationService = {
     }
   },
 
-  listenChatMessages: (userId: string, callback: (messages: ChatMessage[]) => void) => {
-    let unsubscribe: (() => void) | null = null;
-    let currentConversationId: string | null = null;
+  getConversationMessages: async (conversationId: string): Promise<ChatMessage[]> => {
+    try {
+      const records = await pb.collection('messages').getFullList({
+        filter: `conversation="${conversationId}"`,
+        sort: 'created'
+      });
+
+      return records.map((r: any) => ({
+        id: r.id,
+        role: r.role === 'assistant' ? 'model' : (r.role as 'user' | 'model'),
+        text: r.content,
+        timestamp: new Date(r.created).toLocaleTimeString('en-US', { hour12: false })
+      }));
+    } catch (err) {
+      console.warn('PocketBase: Failed to get conversation messages:', err);
+      return [];
+    }
+  },
+
+  getAllConversations: async (): Promise<ConversationSession[]> => {
+    try {
+      const records = await pb.collection('conversations').getFullList({
+        sort: '-created'
+      });
+
+      const sessions: ConversationSession[] = [];
+      for (const record of records) {
+        let messages: ChatMessage[] = [];
+        try {
+          const msgRecords = await pb.collection('messages').getFullList({
+            filter: `conversation="${record.id}"`,
+            sort: 'created'
+          });
+          messages = msgRecords.map((r: any) => ({
+            id: r.id,
+            role: r.role === 'assistant' ? 'model' : (r.role as 'user' | 'model'),
+            text: r.content,
+            timestamp: new Date(r.created).toLocaleTimeString('en-US', { hour12: false })
+          }));
+        } catch {
+          // No messages yet
+        }
+
+        const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+
+        sessions.push({
+          id: record.id,
+          guestLabel: record.guest_label || 'Guest',
+          room: record.room || 'Main Villa',
+          lastMessage: lastMsg ? lastMsg.text : 'No messages yet',
+          lastTimestamp: lastMsg ? lastMsg.timestamp : new Date(record.created).toLocaleTimeString('en-US', { hour12: false }),
+          status: record.status || 'active',
+          messageCount: messages.length,
+          messages
+        });
+      }
+
+      return sessions;
+    } catch (err) {
+      console.warn('PocketBase: Failed to get conversations:', err);
+      return [];
+    }
+  },
+
+  updateConversationStatus: async (conversationId: string, status: 'active' | 'needs_staff' | 'closed') => {
+    try {
+      await pb.collection('conversations').update(conversationId, { status });
+    } catch (err) {
+      console.warn('PocketBase: Failed to update conversation status:', err);
+    }
+  },
+
+  subscribeToMessages: (conversationId: string, callback: (message: ChatMessage) => void) => {
+    let cancelled = false;
 
     const setup = async () => {
       try {
-        currentConversationId = getGuestConversationId();
-
-        if (currentConversationId) {
-          // Load existing messages
-          try {
-            const records = await pb.collection('messages').getFullList({
-              filter: `conversation="${currentConversationId}"`,
-              sort: 'created'
-            });
-
-            const messages: ChatMessage[] = records.map((r: any) => ({
-              id: r.id,
-              role: r.role === 'assistant' ? 'model' : (r.role as 'user' | 'model'),
-              text: r.content,
-              timestamp: new Date(r.created).toLocaleTimeString('en-US', { hour12: false })
-            }));
-
-            if (messages.length > 0) {
-              callback(messages);
-            }
-          } catch (err) {
-            console.warn('PocketBase: Failed to load messages:', err);
-          }
-
-          // Subscribe to realtime changes
-          try {
-            await pb.collection('messages').subscribe('*', (event: any) => {
-              if (event.action === 'create' && event.record.conversation === currentConversationId) {
-                const msg: ChatMessage = {
-                  id: event.record.id,
-                  role: event.record.role === 'assistant' ? 'model' : event.record.role,
-                  text: event.record.content,
-                  timestamp: new Date(event.record.created).toLocaleTimeString('en-US', { hour12: false })
-                };
-                callback([msg]);
-              }
-            });
-
-            unsubscribe = () => {
-              pb.collection('messages').unsubscribe('*');
+        await pb.collection('messages').subscribe('*', (event: any) => {
+          if (!cancelled && event.action === 'create' && event.record.conversation === conversationId) {
+            const msg: ChatMessage = {
+              id: event.record.id,
+              role: event.record.role === 'assistant' ? 'model' : event.record.role,
+              text: event.record.content,
+              timestamp: new Date(event.record.created).toLocaleTimeString('en-US', { hour12: false })
             };
-          } catch (err) {
-            console.warn('PocketBase: Failed to subscribe to messages:', err);
+            callback(msg);
           }
-        }
+        });
       } catch (err) {
-        console.warn('PocketBase: listenChatMessages setup failed:', err);
+        console.warn('PocketBase: Failed to subscribe to messages:', err);
       }
     };
 
     setup();
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      cancelled = true;
+      pb.collection('messages').unsubscribe('*');
     };
-  },
-
-  formatMessagesToSessions: (messages: ChatMessage[], guestLabel = 'Guest (Main Villa)'): ConversationSession[] => {
-    if (!messages || messages.length === 0) return [];
-
-    const lastMsg = messages[messages.length - 1];
-    const needsStaff = messages.some(
-      (m) =>
-        m.text.toLowerCase().includes('staff') ||
-        m.text.toLowerCase().includes('reception') ||
-        m.text.toLowerCase().includes('manager') ||
-        m.text.toLowerCase().includes('help')
-    );
-
-    return [
-      {
-        id: getGuestConversationId() || 'session-main-guest',
-        guestLabel,
-        room: 'Villa 101',
-        lastMessage: lastMsg.text,
-        lastTimestamp: lastMsg.timestamp,
-        status: needsStaff ? 'needs_staff' : 'active',
-        messageCount: messages.length,
-        messages
-      }
-    ];
   },
 
   getConversationId: getGuestConversationId

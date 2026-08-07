@@ -1,6 +1,10 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
+import PocketBase from 'pocketbase';
+
+const POCKETBASE_URL = process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+const pb = new PocketBase(POCKETBASE_URL);
 
 const DEFAULT_SYSTEM_INSTRUCTION =
   "You are TALA, the AI concierge for BAIA. You help guests with questions about their stay, the property, local transportation, food, activities, San Vicente, and information contained in the BAIA knowledge base. Speak naturally, warmly, clearly, and concisely. Prioritize information from the supplied BAIA knowledge base. Never invent property information when the knowledge base does not contain the answer. When appropriate, tell the guest that staff can assist.";
@@ -64,6 +68,28 @@ const FALLBACK_MODELS = [
   }
 ];
 
+// Server-side knowledge grounding: fetch active knowledge docs from PocketBase
+async function getGroundedKnowledgeBase(): Promise<string> {
+  try {
+    const records = await pb.collection('knowledge_documents').getFullList({
+      filter: 'active=true',
+      sort: '-created'
+    });
+
+    if (records.length === 0) return '';
+
+    const docsText = records
+      .filter((r: any) => r.content)
+      .map((r: any, idx: number) => `--- GROUNDED DOCUMENT ${idx + 1} (${r.category || 'General'}): ${r.title} ---\n${r.content}`)
+      .join('\n\n');
+
+    return docsText ? `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.` : '';
+  } catch (err) {
+    console.warn('[TALA KNOWLEDGE] Failed to fetch knowledge base:', err);
+    return '';
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -76,8 +102,90 @@ async function startServer() {
       status: 'online',
       system: 'TALA Core Engine v2.5.0',
       timestamp: new Date().toISOString(),
-      hasServerOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY)
+      hasServerOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY),
+      pocketbaseConnected: true
     });
+  });
+
+  // ==========================================
+  // GUEST API ROUTES (server-side PocketBase)
+  // ==========================================
+
+  // Create a new conversation
+  app.post('/api/guest/conversations', async (req, res) => {
+    try {
+      const { guest_label, room } = req.body;
+      const record = await pb.collection('conversations').create({
+        guest_label: guest_label || 'Guest',
+        room: room || 'Main Villa',
+        status: 'active'
+      });
+      res.json({ id: record.id, status: record.status });
+    } catch (err: any) {
+      console.error('[GUEST API] Failed to create conversation:', err);
+      res.status(500).json({ error: err.message || 'Failed to create conversation' });
+    }
+  });
+
+  // Save a message to a conversation
+  app.post('/api/guest/messages', async (req, res) => {
+    try {
+      const { conversation_id, role, content, agent_id } = req.body;
+      if (!conversation_id || !content) {
+        return res.status(400).json({ error: 'conversation_id and content are required' });
+      }
+      const record = await pb.collection('messages').create({
+        conversation: conversation_id,
+        role: role || 'user',
+        content,
+        agent_id: agent_id || 'tala-concierge'
+      });
+      res.json({ id: record.id });
+    } catch (err: any) {
+      console.error('[GUEST API] Failed to save message:', err);
+      res.status(500).json({ error: err.message || 'Failed to save message' });
+    }
+  });
+
+  // List all conversations (admin)
+  app.get('/api/guest/conversations', async (req, res) => {
+    try {
+      const records = await pb.collection('conversations').getFullList({
+        sort: '-created'
+      });
+      const conversations = records.map((r: any) => ({
+        id: r.id,
+        guest_label: r.guest_label,
+        room: r.room,
+        status: r.status,
+        created: r.created
+      }));
+      res.json({ conversations });
+    } catch (err: any) {
+      console.error('[GUEST API] Failed to list conversations:', err);
+      res.status(500).json({ error: err.message || 'Failed to list conversations' });
+    }
+  });
+
+  // Get messages for a conversation
+  app.get('/api/guest/messages/:conversationId', async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const records = await pb.collection('messages').getFullList({
+        filter: `conversation="${conversationId}"`,
+        sort: 'created'
+      });
+      const messages = records.map((r: any) => ({
+        id: r.id,
+        role: r.role === 'assistant' ? 'model' : r.role,
+        text: r.content,
+        timestamp: new Date(r.created).toISOString()
+      }));
+      res.json({ messages });
+    } catch (err: any) {
+      console.error('[GUEST API] Failed to get messages:', err);
+      res.status(500).json({ error: err.message || 'Failed to get messages' });
+    }
   });
 
   // OpenRouter Model Catalog Endpoint with Server-Side Caching
@@ -198,6 +306,12 @@ async function startServer() {
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: activeSystemInstruction }
       ];
+
+      // Server-side knowledge grounding: append knowledge base docs to system instruction
+      const knowledgeBase = await getGroundedKnowledgeBase();
+      if (knowledgeBase) {
+        messages[0].content += knowledgeBase;
+      }
 
       if (Array.isArray(history)) {
         for (const item of history) {

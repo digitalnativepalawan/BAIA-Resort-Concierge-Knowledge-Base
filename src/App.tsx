@@ -63,12 +63,6 @@ export default function App() {
     let openrouterKey = '';
     let selectedOpenRouterModel = 'openrouter/free';
 
-    const fallbackOpenRouterKey =
-      localStorage.getItem('openrouter_api_key') ||
-      localStorage.getItem('tala_openrouter_api_key') ||
-      localStorage.getItem('OPENROUTER_API_KEY') ||
-      (typeof window !== 'undefined' && (window as any).OPENROUTER_API_KEY ? (window as any).OPENROUTER_API_KEY : '');
-
     const saved = localStorage.getItem('tala_settings');
     if (saved) {
       try {
@@ -78,10 +72,6 @@ export default function App() {
           if (parsed.selectedOpenRouterModel) selectedOpenRouterModel = parsed.selectedOpenRouterModel;
         }
       } catch (e) {}
-    }
-
-    if (!openrouterKey && fallbackOpenRouterKey) {
-      openrouterKey = String(fallbackOpenRouterKey).trim();
     }
 
     return {
@@ -113,13 +103,12 @@ export default function App() {
     }
   }, [knowledgeFiles]);
 
-  // Persist settings
+  // Persist settings (without API keys)
   useEffect(() => {
-    localStorage.setItem('tala_settings', JSON.stringify(settings));
-    if (settings.openrouterApiKey) {
-      localStorage.setItem('openrouter_api_key', settings.openrouterApiKey.trim());
-      localStorage.setItem('tala_openrouter_api_key', settings.openrouterApiKey.trim());
-    }
+    const safeSettings = { ...settings };
+    delete safeSettings.openrouterApiKey;
+    delete safeSettings.customApiKey;
+    localStorage.setItem('tala_settings', JSON.stringify(safeSettings));
     soundEffects.setEnabled(settings.soundEnabled);
   }, [settings]);
 
@@ -161,7 +150,7 @@ export default function App() {
       setKnowledgeFiles(remoteDocs);
     });
 
-    const unsubRequests = requestService.listenRequests('guest', (remoteRequests) => {
+    const unsubRequests = requestService.listenRequests((remoteRequests) => {
       setGuestRequests(remoteRequests);
     });
 
@@ -371,6 +360,16 @@ export default function App() {
 
       stopSpeech();
 
+      // Ensure we have a conversation ID
+      let conversationId = conversationService.getConversationId();
+      if (!conversationId) {
+        try {
+          conversationId = await conversationService.ensureGuestConversation();
+        } catch (err) {
+          console.warn('Failed to create conversation:', err);
+        }
+      }
+
       const userMsg: ChatMessage = {
         id: Math.random().toString(36).substring(2, 9),
         role: 'user',
@@ -379,7 +378,9 @@ export default function App() {
       };
 
       setMessages((prev) => [...prev, userMsg]);
-      conversationService.saveChatMessage(currentUser?.id || 'guest', userMsg);
+      if (conversationId) {
+        conversationService.saveChatMessage(conversationId, userMsg);
+      }
       addLog(`[GUEST INPUT]: "${promptText}"`, 'info');
 
       setState('PROCESSING');
@@ -393,19 +394,8 @@ export default function App() {
 
         const effectiveOpenRouterKey = settings.openrouterApiKey?.trim() || '';
 
-        // Construct grounded system instruction
-        let groundedSystemInstruction = settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
-        if (knowledgeFiles.length > 0) {
-          const docsText = knowledgeFiles
-            .filter((f) => f.content)
-            .map((f, idx) => `--- GROUNDED DOCUMENT ${idx + 1} (${f.category || 'General'}): ${f.name} ---\n${f.content}`)
-            .join('\n\n');
-
-          if (docsText) {
-            groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.`;
-          }
-        }
-
+        // Server-side knowledge grounding: the server fetches knowledge docs from PocketBase
+        // No client-side grounding needed - pass the base system instruction
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
 
         const response = await fetch('/api/chat', {
@@ -419,7 +409,7 @@ export default function App() {
             model: selectedModel,
             prompt: promptText,
             history: historyForApi,
-            systemInstruction: groundedSystemInstruction
+            systemInstruction: settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION
           })
         });
 
@@ -445,7 +435,9 @@ export default function App() {
         };
 
         setMessages((prev) => [...prev, talaMsg]);
-        conversationService.saveChatMessage(currentUser?.id || 'guest', talaMsg);
+        if (conversationId) {
+          conversationService.saveChatMessage(conversationId, talaMsg);
+        }
         addLog(`[ TALA RESPONSE DELIVERED ]`, 'success');
         soundEffects.playResponseChime();
 
@@ -472,7 +464,7 @@ export default function App() {
         ]);
       }
     },
-    [messages, settings, addLog, speakText, stopSpeech, knowledgeFiles, currentUser]
+    [messages, settings, addLog, speakText, stopSpeech]
   );
 
   // Web Speech Recognition
@@ -582,22 +574,35 @@ export default function App() {
 
   // Guest Requests Handlers
   const handleSaveRequest = useCallback(async (req: GuestRequest) => {
-    const updated = await requestService.saveRequest(currentUser?.id || null, req);
-    setGuestRequests(updated);
-    addLog(`Logged guest request "${req.title}"`, 'success');
-  }, [currentUser, addLog]);
+    const newReq = await requestService.saveRequest({
+      title: req.title,
+      description: req.description,
+      category: req.category,
+      guestLabel: req.guestLabel,
+      room: req.room,
+      status: req.status
+    });
+    if (newReq) {
+      setGuestRequests((prev) => [newReq, ...prev]);
+      addLog(`Logged guest request "${req.title}"`, 'success');
+    }
+  }, [addLog]);
 
   const handleUpdateStatus = useCallback(async (id: string, status: GuestRequestStatus) => {
-    const updated = await requestService.updateRequestStatus(currentUser?.id || null, id, status);
-    setGuestRequests(updated);
-    addLog(`Updated request ${id} status to ${status}`, 'info');
-  }, [currentUser, addLog]);
+    const success = await requestService.updateRequestStatus(id, status);
+    if (success) {
+      setGuestRequests((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
+      addLog(`Updated request ${id} status to ${status}`, 'info');
+    }
+  }, [addLog]);
 
   const handleDeleteRequest = useCallback(async (id: string) => {
-    const updated = await requestService.deleteRequest(currentUser?.id || null, id);
-    setGuestRequests(updated);
-    addLog(`Deleted request ${id}`, 'info');
-  }, [currentUser, addLog]);
+    const success = await requestService.deleteRequest(id);
+    if (success) {
+      setGuestRequests((prev) => prev.filter((r) => r.id !== id));
+      addLog(`Deleted request ${id}`, 'info');
+    }
+  }, [addLog]);
 
   return (
     <BrowserRouter>
@@ -655,12 +660,7 @@ export default function App() {
           {/* Admin Conversations Inbox */}
           <Route
             path="conversations"
-            element={
-              <AdminConversationsPage
-                messages={messages}
-                onSendMessage={sendPromptToTala}
-              />
-            }
+            element={<AdminConversationsPage />}
           />
 
           {/* Admin Knowledge Base Manager */}

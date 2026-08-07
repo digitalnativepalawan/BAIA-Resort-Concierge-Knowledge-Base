@@ -47,8 +47,8 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<GuestRequestCategory>('housekeeping');
-  const [guestLabel, setGuestLabel] = useState('Sarah Jenkins');
-  const [room, setRoom] = useState('Villa 101');
+  const [guestLabel, setGuestLabel] = useState('');
+  const [room, setRoom] = useState('');
 
   const filteredRequests = requests.filter((r) => {
     const matchesCat = selectedCategory === 'all' || r.category === selectedCategory;
@@ -303,7 +303,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Villa 101"
+                  placeholder="e.g. Villa 101, Ocean Suite"
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
                   className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
@@ -315,13 +315,13 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
               <label className="block text-xs font-semibold text-gray-300 uppercase mb-1">
                 Guest Name / Label
               </label>
-              <input
-                type="text"
-                placeholder="Sarah Jenkins"
-                value={guestLabel}
-                onChange={(e) => setGuestLabel(e.target.value)}
-                className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
-              />
+                <input
+                  type="text"
+                  placeholder="e.g. Guest name or room number"
+                  value={guestLabel}
+                  onChange={(e) => setGuestLabel(e.target.value)}
+                  className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                />
             </div>
 
             <div>

@@ -39,15 +39,15 @@ Via the PocketBase admin UI at http://127.0.0.1:8090/_/, create a superuser acco
 ### 4. Set up collections
 
 ```bash
-# Set your admin credentials
-export POCKETBASE_ADMIN_EMAIL="admin@baia-resort.com"
-export POCKETBASE_ADMIN_PASSWORD="your-password"
+# Set your admin credentials (no defaults - you must provide these)
+export POCKETBASE_ADMIN_EMAIL="your-email@example.com"
+export POCKETBASE_ADMIN_PASSWORD="your-secure-password"
 
 # Run the setup script
 node scripts/setup-pocketbase.mjs
 ```
 
-This creates all required collections: users, conversations, messages, knowledge_documents, guest_requests, settings, agents.
+This creates all required collections with proper access rules: users, conversations, messages, knowledge_documents, guest_requests, settings, agents.
 
 ### 5. Configure environment
 
@@ -61,6 +61,8 @@ Edit `.env`:
 OPENROUTER_API_KEY="your-openrouter-key"
 APP_URL="http://localhost:3000"
 VITE_POCKETBASE_URL="http://127.0.0.1:8090"
+POCKETBASE_ADMIN_EMAIL="your-email@example.com"
+POCKETBASE_ADMIN_PASSWORD="your-secure-password"
 ```
 
 ### 6. Run the app
@@ -88,21 +90,31 @@ React + Vite frontend
     PocketBase
 
 Express
-        |
-    OpenRouter
+    |--- /api/chat (OpenRouter + server-side knowledge grounding)
+    |--- /api/guest/* (conversation & message CRUD)
+    |--- /api/models (OpenRouter model catalog)
+    |--- /api/health (status check)
 ```
+
+## Security
+
+- No default admin credentials - you must set `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD`
+- API keys are NOT stored in localStorage - only in server environment
+- Knowledge grounding is done server-side (knowledge docs fetched from PocketBase on the server)
+- Access rules configured for all collections
+- Guest routes use server-side PocketBase client
 
 ## Collections
 
-| Collection | Purpose |
-|-----------|---------|
-| users | Admin/staff accounts (PocketBase auth) |
-| conversations | Guest conversation sessions |
-| messages | Chat messages per conversation |
-| knowledge_documents | Resort knowledge base for AI grounding |
-| guest_requests | Service requests from guests |
-| settings | Resort-wide configuration |
-| agents | AI agent definitions (TALA, future agents) |
+| Collection | Purpose | Access |
+|-----------|---------|--------|
+| users | Admin/staff accounts (PocketBase auth) | Authenticated users |
+| conversations | Guest conversation sessions | Create: all, Update: auth, Delete: managers |
+| messages | Chat messages per conversation | Create: all, Update: auth, Delete: managers |
+| knowledge_documents | Resort knowledge base for AI grounding | Create/Update/Delete: auth |
+| guest_requests | Service requests from guests | Create: all, Update/Delete: auth |
+| settings | Resort-wide configuration | Managers/owners only |
+| agents | AI agent definitions (TALA, future agents) | Managers/owners only |
 
 ## Backup
 

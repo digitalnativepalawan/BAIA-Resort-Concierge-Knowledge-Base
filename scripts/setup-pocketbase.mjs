@@ -17,8 +17,15 @@
 import PocketBase from 'pocketbase';
 
 const POCKETBASE_URL = process.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
-const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@baia-resort.com';
-const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || 'admin123456';
+const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error('ERROR: POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD must be set.');
+  console.error('  export POCKETBASE_ADMIN_EMAIL="your-email"');
+  console.error('  export POCKETBASE_ADMIN_PASSWORD="your-password"');
+  process.exit(1);
+}
 
 const pb = new PocketBase(POCKETBASE_URL);
 
@@ -38,6 +45,15 @@ async function createCollectionIfNotExists(name, config) {
   } catch (err) {
     console.error(`  [ERROR] Failed to create collection "${name}":`, err.message);
     throw err;
+  }
+}
+
+async function setupAccessRules(collectionName, rules) {
+  try {
+    await pb.collections.update(collectionName, { rules });
+    console.log(`  [OK] Updated access rules for "${collectionName}".`);
+  } catch (err) {
+    console.warn(`  [WARN] Failed to update rules for "${collectionName}":`, err.message);
   }
 }
 
@@ -127,7 +143,7 @@ async function setup() {
         }
       }
     ],
-    indexes: []
+    indexes: ['created']
   });
 
   // 3. Messages collection
@@ -168,7 +184,7 @@ async function setup() {
         options: { min: 0, max: 100 }
       }
     ],
-    indexes: []
+    indexes: ['conversation', 'created']
   });
 
   // 4. Knowledge documents collection
@@ -215,7 +231,7 @@ async function setup() {
         required: false
       }
     ],
-    indexes: []
+    indexes: ['category', 'active']
   });
 
   // 5. Guest requests collection
@@ -276,7 +292,7 @@ async function setup() {
         }
       }
     ],
-    indexes: []
+    indexes: ['category', 'status', 'created']
   });
 
   // 6. Settings collection (singleton - single record)
@@ -448,7 +464,7 @@ async function setup() {
         required: false
       }
     ],
-    indexes: []
+    indexes: ['slug']
   });
 
   // Seed default TALA agent
@@ -502,10 +518,69 @@ async function setup() {
     console.log('  [OK] Created default settings record.');
   }
 
+  // 8. Configure access rules
+  console.log('\nConfiguring access rules...\n');
+
+  await setupAccessRules('users', {
+    list: 'id = @request.auth.id || @request.auth.role = "owner" || @request.auth.role = "manager"',
+    view: 'id = @request.auth.id || @request.auth.role = "owner" || @request.auth.role = "manager"',
+    create: false,
+    update: 'id = @request.auth.id || @request.auth.role = "owner"',
+    delete: '@request.auth.role = "owner"'
+  });
+
+  await setupAccessRules('conversations', {
+    list: '@request.auth.id != "" || true',
+    view: '@request.auth.id != "" || true',
+    create: true,
+    update: '@request.auth.id != ""',
+    delete: '@request.auth.role = "owner" || @request.auth.role = "manager"'
+  });
+
+  await setupAccessRules('messages', {
+    list: '@request.auth.id != "" || true',
+    view: '@request.auth.id != "" || true',
+    create: true,
+    update: '@request.auth.id != ""',
+    delete: '@request.auth.role = "owner" || @request.auth.role = "manager"'
+  });
+
+  await setupAccessRules('knowledge_documents', {
+    list: '@request.auth.id != "" || true',
+    view: '@request.auth.id != "" || true',
+    create: '@request.auth.id != ""',
+    update: '@request.auth.id != ""',
+    delete: '@request.auth.id != ""'
+  });
+
+  await setupAccessRules('guest_requests', {
+    list: '@request.auth.id != "" || true',
+    view: '@request.auth.id != "" || true',
+    create: true,
+    update: '@request.auth.id != ""',
+    delete: '@request.auth.id != ""'
+  });
+
+  await setupAccessRules('settings', {
+    list: '@request.auth.id != "" || true',
+    view: '@request.auth.id != "" || true',
+    create: '@request.auth.role = "owner" || @request.auth.role = "manager"',
+    update: '@request.auth.role = "owner" || @request.auth.role = "manager"',
+    delete: '@request.auth.role = "owner"'
+  });
+
+  await setupAccessRules('agents', {
+    list: '@request.auth.id != "" || true',
+    view: '@request.auth.id != "" || true',
+    create: '@request.auth.role = "owner" || @request.auth.role = "manager"',
+    update: '@request.auth.role = "owner" || @request.auth.role = "manager"',
+    delete: '@request.auth.role = "owner"'
+  });
+
   console.log('\n=== Setup Complete ===');
   console.log('Collections created: users, conversations, messages, knowledge_documents, guest_requests, settings, agents');
   console.log('Default TALA agent and settings seeded.');
-  console.log('\nAccess rules have been set. You can configure additional rules via the PocketBase Admin UI.');
+  console.log('Access rules configured for all collections.');
 }
 
 setup().catch((err) => {

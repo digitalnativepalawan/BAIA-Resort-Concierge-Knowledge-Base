@@ -31,7 +31,7 @@ export interface TelemetryLogEntry {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'model';
+  role: 'user' | 'model' | 'staff';
   text: string;
   timestamp: string;
 }
@@ -115,4 +115,25 @@ export interface ConversationSession {
   status: 'active' | 'needs_staff' | 'closed';
   messageCount: number;
   messages: ChatMessage[];
+}
+
+export interface StoredMessage {
+  id: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'staff' | 'system';
+  content: string;
+  agent_id?: string;
+  created: string;
+}
+
+export interface GuestSession {
+  conversationId: string;
+  guestLabel: string;
+  room?: string;
+}
+
+export interface BackendStatus {
+  online: boolean;
+  pocketbaseConnected: boolean;
+  hasServerOpenRouterKey: boolean;
 }
