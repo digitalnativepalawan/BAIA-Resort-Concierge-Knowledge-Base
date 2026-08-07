@@ -101,10 +101,10 @@ async function ensureServerAuth(): Promise<boolean> {
     return false;
   }
   try {
-    await pb.admins.authWithPassword(email, password);
+    await pb.collection('_superusers').authWithPassword(email, password);
     return true;
   } catch (err: any) {
-    console.warn('[TALA SERVER] PocketBase admin auth failed:', err.message);
+    console.warn('[TALA SERVER] PocketBase superuser auth failed:', err.message);
     return false;
   }
 }

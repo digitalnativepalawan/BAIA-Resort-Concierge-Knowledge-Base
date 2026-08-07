@@ -48,13 +48,68 @@ async function createCollectionIfNotExists(name, config) {
   }
 }
 
+/**
+ * Update collection access rules using PocketBase top-level rule fields.
+ *
+ * PocketBase semantics:
+ *   null  = locked (superuser only)
+ *   ""    = public
+ *   "str" = conditional rule
+ *
+ * @param {string} collectionName
+ * @param {Object} rules - { list, view, create, update, delete }
+ */
 async function setupAccessRules(collectionName, rules) {
+  // PocketBase SDK expects top-level fields: listRule, viewRule, createRule, updateRule, deleteRule
+  // false maps to null (locked/superuser only), NOT empty string (public)
+  const updatePayload = {
+    listRule:   rules.list   === false ? null : (rules.list   ?? null),
+    viewRule:   rules.view   === false ? null : (rules.view   ?? null),
+    createRule: rules.create === false ? null : (rules.create ?? null),
+    updateRule: rules.update === false ? null : (rules.update ?? null),
+    deleteRule: rules.delete === false ? null : (rules.delete ?? null),
+  };
+
   try {
-    await pb.collections.update(collectionName, { rules });
-    console.log(`  [OK] Updated access rules for "${collectionName}".`);
+    await pb.collections.update(collectionName, updatePayload);
   } catch (err) {
-    console.warn(`  [WARN] Failed to update rules for "${collectionName}":`, err.message);
+    console.error(`  [ERROR] Failed to update rules for "${collectionName}":`, err.message);
+    process.exit(1);
   }
+
+  // Verify by fetching the collection back and comparing actual values
+  let updated;
+  try {
+    updated = await pb.collections.getOne(collectionName);
+  } catch (err) {
+    console.error(`  [ERROR] Failed to verify rules for "${collectionName}":`, err.message);
+    process.exit(1);
+  }
+
+  const actualRules = {
+    listRule: updated.listRule,
+    viewRule: updated.viewRule,
+    createRule: updated.createRule,
+    updateRule: updated.updateRule,
+    deleteRule: updated.deleteRule,
+  };
+
+  let failed = false;
+  for (const [key, expected] of Object.entries(updatePayload)) {
+    const actual = actualRules[key];
+    // null === null, "" === "", string === string
+    if (actual !== expected) {
+      console.error(`  [FAIL] "${collectionName}" ${key}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+      failed = true;
+    }
+  }
+
+  if (failed) {
+    console.error(`  [FATAL] Rule verification failed for "${collectionName}". Aborting.`);
+    process.exit(1);
+  }
+
+  console.log(`  [OK] Rules verified for "${collectionName}".`);
 }
 
 async function setup() {
@@ -70,12 +125,12 @@ async function setup() {
     process.exit(1);
   }
 
-  // Authenticate as admin
+  // Authenticate as superuser
   try {
-    await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-    console.log('Authenticated as admin.\n');
+    await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+    console.log('Authenticated as superuser.\n');
   } catch (err) {
-    console.error(`ERROR: Admin authentication failed for ${ADMIN_EMAIL}.`);
+    console.error(`ERROR: Superuser authentication failed for ${ADMIN_EMAIL}.`);
     console.error('Create a superuser first via PocketBase admin UI at http://127.0.0.1:8090/_/');
     process.exit(1);
   }
@@ -525,6 +580,7 @@ async function setup() {
   }
 
   // 8. Configure access rules (PRIVATE by default)
+  // PocketBase rule semantics: null = locked/superuser, "" = public, "rule" = conditional
   console.log('\nConfiguring access rules...\n');
 
   // users: authenticated self OR owner/manager
@@ -536,7 +592,7 @@ async function setup() {
     delete: '@request.auth.role = "owner"'
   });
 
-  // conversations: authenticated only, no public access
+  // conversations: authenticated only, no public access, no public create (server creates via superuser)
   await setupAccessRules('conversations', {
     list: '@request.auth.id != ""',
     view: '@request.auth.id != ""',
@@ -545,7 +601,7 @@ async function setup() {
     delete: '@request.auth.role = "owner" || @request.auth.role = "manager"'
   });
 
-  // messages: authenticated only, no public access
+  // messages: authenticated only, no public access, no public create (server creates via superuser)
   await setupAccessRules('messages', {
     list: '@request.auth.id != ""',
     view: '@request.auth.id != ""',
@@ -563,7 +619,7 @@ async function setup() {
     delete: '@request.auth.id != ""'
   });
 
-  // guest_requests: authenticated only, no public access
+  // guest_requests: authenticated only, no public access, no public create (server creates via superuser)
   await setupAccessRules('guest_requests', {
     list: '@request.auth.id != ""',
     view: '@request.auth.id != ""',
@@ -572,7 +628,7 @@ async function setup() {
     delete: '@request.auth.id != ""'
   });
 
-  // settings: authenticated only
+  // settings: authenticated read, owner/manager write
   await setupAccessRules('settings', {
     list: '@request.auth.id != ""',
     view: '@request.auth.id != ""',
@@ -581,7 +637,7 @@ async function setup() {
     delete: '@request.auth.role = "owner"'
   });
 
-  // agents: authenticated only
+  // agents: authenticated read, owner/manager write
   await setupAccessRules('agents', {
     list: '@request.auth.id != ""',
     view: '@request.auth.id != ""',
