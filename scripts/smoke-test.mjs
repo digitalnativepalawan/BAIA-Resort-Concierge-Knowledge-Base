@@ -692,7 +692,16 @@ async function run() {
   // ============================================================
   console.log('\n--- Agent Architecture ---');
 
-  // Verify agent fields for skills, permissions, knowledge, model, voice
+  const EXPECTED_TALA_SKILLS = ['knowledge.search', 'guest_request.create', 'conversation.reply'];
+  const EXPECTED_TALA_PERMISSIONS = ['knowledge.read', 'guest_requests.create', 'conversations.reply'];
+  const EXPECTED_KNOWLEDGE_CATEGORIES = ['Property', 'Rooms', 'Food & Breakfast', 'Transportation', 'Activities', 'San Vicente', 'Policies', 'Emergency', 'Other'];
+  const VALID_SKILL_IDS = ['knowledge.search', 'guest_request.create', 'conversation.reply', 'system.status'];
+  const VALID_PERMISSION_IDS = ['knowledge.read', 'guest_requests.create', 'guest_requests.read', 'guest_requests.update', 'conversations.read', 'conversations.reply', 'settings.read', 'settings.update', 'agents.read', 'agents.update', 'system.status.read', 'tools.execute'];
+  const VALID_STATUS_VALUES = ['online', 'offline', 'disabled'];
+  const INVALID_SKILL_IDS = ['knowledge_search', 'reservation_management', 'conversation_management', 'system_status'];
+  const INVALID_STATUS_VALUES = ['active', 'inactive', 'maintenance'];
+
+  // Verify agent fields exist
   try {
     const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
     const fieldNames = (await pb.collections.getOne('agents')).fields.map(f => f.name);
@@ -700,12 +709,6 @@ async function run() {
     // Skills field
     if (fieldNames.includes('skills')) {
       pass('Agent field "skills" exists');
-      const hasSkills = Array.isArray(tala.skills) && tala.skills.length > 0;
-      if (hasSkills) {
-        pass(`Agent has ${tala.skills.length} skill(s) assigned`);
-      } else {
-        fail('Agent skills', `skills=${JSON.stringify(tala.skills)}`);
-      }
     } else {
       fail('Agent field "skills"', 'missing from collection');
     }
@@ -713,12 +716,6 @@ async function run() {
     // Permissions field
     if (fieldNames.includes('permissions')) {
       pass('Agent field "permissions" exists');
-      const hasPerms = Array.isArray(tala.permissions) && tala.permissions.length > 0;
-      if (hasPerms) {
-        pass(`Agent has ${tala.permissions.length} permission(s) assigned`);
-      } else {
-        fail('Agent permissions', `permissions=${JSON.stringify(tala.permissions)}`);
-      }
     } else {
       fail('Agent field "permissions"', 'missing from collection');
     }
@@ -767,12 +764,122 @@ async function run() {
     fail('Agent architecture check', err.message);
   }
 
-  // Verify agent test endpoint exists
+  // Verify TALA status = online
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    if (tala.status === 'online') {
+      pass('TALA status is online');
+    } else {
+      fail('TALA status', `expected online, got ${tala.status}`);
+    }
+  } catch (err) {
+    fail('TALA status check', err.message);
+  }
+
+  // Verify TALA skills exactly match expected
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    const skills = tala.skills || [];
+    const skillsMatch = EXPECTED_TALA_SKILLS.length === skills.length &&
+      EXPECTED_TALA_SKILLS.every(s => skills.includes(s));
+    if (skillsMatch) {
+      pass(`TALA skills match: ${JSON.stringify(skills)}`);
+    } else {
+      fail('TALA skills', `expected ${JSON.stringify(EXPECTED_TALA_SKILLS)}, got ${JSON.stringify(skills)}`);
+    }
+  } catch (err) {
+    fail('TALA skills check', err.message);
+  }
+
+  // Verify TALA permissions exactly match expected
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    const perms = tala.permissions || [];
+    const permsMatch = EXPECTED_TALA_PERMISSIONS.length === perms.length &&
+      EXPECTED_TALA_PERMISSIONS.every(p => perms.includes(p));
+    if (permsMatch) {
+      pass(`TALA permissions match: ${JSON.stringify(perms)}`);
+    } else {
+      fail('TALA permissions', `expected ${JSON.stringify(EXPECTED_TALA_PERMISSIONS)}, got ${JSON.stringify(perms)}`);
+    }
+  } catch (err) {
+    fail('TALA permissions check', err.message);
+  }
+
+  // Verify TALA knowledge categories exactly match PocketBase categories
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    const cats = tala.knowledge_categories || [];
+    const catsMatch = EXPECTED_KNOWLEDGE_CATEGORIES.length === cats.length &&
+      EXPECTED_KNOWLEDGE_CATEGORIES.every(c => cats.includes(c));
+    if (catsMatch) {
+      pass(`TALA knowledge categories match PocketBase: ${cats.length} categories`);
+    } else {
+      fail('TALA knowledge categories', `expected ${JSON.stringify(EXPECTED_KNOWLEDGE_CATEGORIES)}, got ${JSON.stringify(cats)}`);
+    }
+  } catch (err) {
+    fail('TALA knowledge categories check', err.message);
+  }
+
+  // Verify old underscore skill IDs do NOT exist in TALA
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    const skills = tala.skills || [];
+    const hasOldSkills = skills.some(s => INVALID_SKILL_IDS.includes(s));
+    if (!hasOldSkills) {
+      pass('TALA has no old underscore skill IDs');
+    } else {
+      fail('TALA old skills', `found old IDs: ${JSON.stringify(skills.filter(s => INVALID_SKILL_IDS.includes(s)))}`);
+    }
+  } catch (err) {
+    fail('TALA old skills check', err.message);
+  }
+
+  // Verify old status values do NOT exist
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    if (!INVALID_STATUS_VALUES.includes(tala.status)) {
+      pass(`TALA status '${tala.status}' is not an old invalid value`);
+    } else {
+      fail('TALA status', `found old invalid status: ${tala.status}`);
+    }
+  } catch (err) {
+    fail('TALA old status check', err.message);
+  }
+
+  // Verify unknown skill is rejected by validation
+  try {
+    const { validateSkillIds } = await import('../src/agents/skillRegistry.ts');
+    const result = validateSkillIds(['knowledge.search', 'fake.skill', 'invalid_id']);
+    if (result.valid.length === 1 && result.valid[0] === 'knowledge.search' &&
+        result.invalid.length === 2 && result.invalid.includes('fake.skill') && result.invalid.includes('invalid_id')) {
+      pass('Unknown skill validation rejects invalid IDs');
+    } else {
+      fail('Unknown skill validation', `valid=${JSON.stringify(result.valid)} invalid=${JSON.stringify(result.invalid)}`);
+    }
+  } catch (err) {
+    fail('Unknown skill validation', err.message);
+  }
+
+  // Verify reservation_management does NOT exist as a skill
+  try {
+    const { validateSkillIds } = await import('../src/agents/skillRegistry.ts');
+    const result = validateSkillIds(['reservation_management']);
+    if (result.invalid.length === 1 && result.invalid[0] === 'reservation_management') {
+      pass('reservation_management skill does not exist');
+    } else {
+      fail('reservation_management', `should be invalid, got valid=${JSON.stringify(result.valid)}`);
+    }
+  } catch (err) {
+    fail('reservation_management check', err.message);
+  }
+
+  // Verify agent test endpoint exists and requires auth (server-side PB auth)
   try {
     const resp = await fetch(`${APP_URL}/api/agents/tala-concierge/test`);
     const data = await resp.json();
     if (resp.ok && data.ok !== undefined && data.agent) {
-      pass('Agent test endpoint responds');
+      pass('Agent test endpoint responds (server-authenticated)');
       if (data.agent.slug === 'tala-concierge') {
         pass('Agent test endpoint returns correct agent');
       } else {
@@ -808,8 +915,102 @@ async function run() {
     fail('Agent test 404', err.message);
   }
 
-  // Verify agent chat with agentSlug parameter
+  // Verify offline agent execution is blocked via chat endpoint
+  try {
+    // Create a temporary offline agent
+    const offlineAgent = await pb.collection('agents').create({
+      name: 'Offline Test Agent',
+      slug: 'test-offline-agent',
+      role: 'test',
+      system_prompt: 'Test agent',
+      model_id: 'openrouter/free',
+      status: 'offline',
+      guest_facing: false,
+      skills: [],
+      permissions: [],
+      knowledge_categories: [],
+    });
+
+    const resp = await fetch(`${APP_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentSlug: 'test-offline-agent',
+        prompt: 'This should fail',
+        history: []
+      })
+    });
+    if (resp.status === 403) {
+      pass('Offline agent execution blocked (403)');
+    } else {
+      const data = await resp.json();
+      fail('Offline agent execution', `expected 403, got ${resp.status}`);
+    }
+
+    // Cleanup
+    await pb.collection('agents').delete(offlineAgent.id);
+  } catch (err) {
+    fail('Offline agent execution', err.message);
+  }
+
+  // Verify disabled agent execution is blocked via chat endpoint
+  try {
+    const disabledAgent = await pb.collection('agents').create({
+      name: 'Disabled Test Agent',
+      slug: 'test-disabled-agent',
+      role: 'test',
+      system_prompt: 'Test agent',
+      model_id: 'openrouter/free',
+      status: 'disabled',
+      guest_facing: false,
+      skills: [],
+      permissions: [],
+      knowledge_categories: [],
+    });
+
+    const resp = await fetch(`${APP_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentSlug: 'test-disabled-agent',
+        prompt: 'This should fail',
+        history: []
+      })
+    });
+    if (resp.status === 403) {
+      pass('Disabled agent execution blocked (403)');
+    } else {
+      const data = await resp.json();
+      fail('Disabled agent execution', `expected 403, got ${resp.status}`);
+    }
+
+    await pb.collection('agents').delete(disabledAgent.id);
+  } catch (err) {
+    fail('Disabled agent execution', err.message);
+  }
+
+  // Verify chat defaults to tala-concierge when no agentSlug
   if (OPENROUTER_API_KEY) {
+    try {
+      const resp = await fetch(`${APP_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: 'Reply with exactly: DEFAULT_AGENT_OK',
+          history: []
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.responseText) {
+        pass('Chat defaults to tala-concierge agent');
+      } else {
+        fail('Chat default agent', `status=${resp.status} ${JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      fail('Chat default agent', err.message);
+    }
+
+    // Verify chat with explicit agentSlug
     try {
       const resp = await fetch(`${APP_URL}/api/chat`, {
         method: 'POST',
@@ -830,6 +1031,7 @@ async function run() {
       fail('Chat with agentSlug', err.message);
     }
   } else {
+    block('Chat default agent', 'OPENROUTER_API_KEY not set');
     block('Chat with agentSlug', 'OPENROUTER_API_KEY not set');
   }
 

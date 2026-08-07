@@ -1,76 +1,76 @@
 import type { AgentPermission, PermissionId } from './types';
 
 const PERMISSIONS: Record<PermissionId, AgentPermission> = {
-  read_knowledge: {
-    id: 'read_knowledge',
+  'knowledge.read': {
+    id: 'knowledge.read',
     name: 'Read Knowledge',
     description: 'Access and search the knowledge base',
     level: 'read',
   },
-  write_knowledge: {
-    id: 'write_knowledge',
-    name: 'Write Knowledge',
-    description: 'Create and modify knowledge base entries',
+  'guest_requests.create': {
+    id: 'guest_requests.create',
+    name: 'Create Guest Requests',
+    description: 'Create guest service requests',
     level: 'write',
   },
-  manage_reservations: {
-    id: 'manage_reservations',
-    name: 'Manage Reservations',
-    description: 'Create, update, and cancel reservations',
-    level: 'write',
-  },
-  view_guest_data: {
-    id: 'view_guest_data',
-    name: 'View Guest Data',
-    description: 'Access guest profile and booking information',
+  'guest_requests.read': {
+    id: 'guest_requests.read',
+    name: 'Read Guest Requests',
+    description: 'View guest service requests',
     level: 'read',
   },
-  manage_guest_data: {
-    id: 'manage_guest_data',
-    name: 'Manage Guest Data',
-    description: 'Modify guest profiles and preferences',
+  'guest_requests.update': {
+    id: 'guest_requests.update',
+    name: 'Update Guest Requests',
+    description: 'Update guest service request status',
     level: 'write',
   },
-  manage_conversations: {
-    id: 'manage_conversations',
-    name: 'Manage Conversations',
-    description: 'Access and manage chat sessions',
+  'conversations.read': {
+    id: 'conversations.read',
+    name: 'Read Conversations',
+    description: 'Access chat session history',
+    level: 'read',
+  },
+  'conversations.reply': {
+    id: 'conversations.reply',
+    name: 'Reply to Conversations',
+    description: 'Send replies in guest conversations',
     level: 'write',
   },
-  access_system: {
-    id: 'access_system',
-    name: 'Access System',
+  'settings.read': {
+    id: 'settings.read',
+    name: 'Read Settings',
+    description: 'View system settings',
+    level: 'read',
+  },
+  'settings.update': {
+    id: 'settings.update',
+    name: 'Update Settings',
+    description: 'Modify system settings',
+    level: 'admin',
+  },
+  'agents.read': {
+    id: 'agents.read',
+    name: 'Read Agents',
+    description: 'View agent profiles and configurations',
+    level: 'read',
+  },
+  'agents.update': {
+    id: 'agents.update',
+    name: 'Update Agents',
+    description: 'Modify agent profiles and configurations',
+    level: 'admin',
+  },
+  'system.status.read': {
+    id: 'system.status.read',
+    name: 'Read System Status',
     description: 'View system health and diagnostics',
     level: 'read',
   },
-  manage_agents: {
-    id: 'manage_agents',
-    name: 'Manage Agents',
-    description: 'Create, edit, and delete agent profiles',
-    level: 'admin',
-  },
-  view_analytics: {
-    id: 'view_analytics',
-    name: 'View Analytics',
-    description: 'Access usage and performance analytics',
-    level: 'read',
-  },
-  export_data: {
-    id: 'export_data',
-    name: 'Export Data',
-    description: 'Export conversations and knowledge data',
-    level: 'write',
-  },
-  manage_settings: {
-    id: 'manage_settings',
-    name: 'Manage Settings',
-    description: 'Modify system and agent settings',
-    level: 'admin',
-  },
-  manage_users: {
-    id: 'manage_users',
-    name: 'Manage Users',
-    description: 'Create and manage admin user accounts',
+  'tools.execute': {
+    id: 'tools.execute',
+    name: 'Execute Tools',
+    description: 'Execute external tools and integrations',
     level: 'admin',
   },
 };

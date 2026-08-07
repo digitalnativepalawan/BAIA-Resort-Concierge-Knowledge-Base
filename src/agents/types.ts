@@ -3,40 +3,43 @@ export interface AgentModelConfig {
   provider: 'openrouter';
   modelId: string;
   temperature: number;
-  maxTokens?: number;
 }
 
-// Voice profile for TTS
+// Voice profile for TTS (browser SpeechSynthesis)
 export interface AgentVoiceProfile {
-  voiceId?: string;          // e.g. OpenAI voice name
-  speed: number;             // 0.25 – 4.0
   enabled: boolean;
+  language: string;
+  genderPreference?: 'female' | 'male' | 'neutral';
+  accent?: string;
+  selectedVoiceName?: string;
+  pitch?: number;
+  rate?: number;
+  autoSpeak?: boolean;
 }
 
-// Knowledge scope for retrieval
+// Knowledge scope - must match PocketBase knowledge_documents collection exactly
 export type KnowledgeCategory =
-  | 'resort_info'
-  | 'facilities'
-  | 'dining'
-  | 'activities'
-  | 'booking'
-  | 'policies'
-  | 'local_area'
-  | 'sustainability'
-  | 'general';
+  | 'Property'
+  | 'Rooms'
+  | 'Food & Breakfast'
+  | 'Transportation'
+  | 'Activities'
+  | 'San Vicente'
+  | 'Policies'
+  | 'Emergency'
+  | 'Other';
 
 export interface AgentKnowledgeConfig {
+  enabled: boolean;
   categories: KnowledgeCategory[];
-  embeddingModel?: string;
-  maxContextChunks: number;
 }
 
-// Predefined skill identifiers
+// Predefined skill identifiers (dot notation)
 export type SkillId =
-  | 'knowledge_search'
-  | 'reservation_management'
-  | 'conversation_management'
-  | 'system_status';
+  | 'knowledge.search'
+  | 'guest_request.create'
+  | 'conversation.reply'
+  | 'system.status';
 
 export interface AgentSkill {
   id: SkillId;
@@ -45,20 +48,20 @@ export interface AgentSkill {
   permissions: PermissionId[];
 }
 
-// Predefined permission identifiers
+// Predefined permission identifiers (dot notation)
 export type PermissionId =
-  | 'read_knowledge'
-  | 'write_knowledge'
-  | 'manage_reservations'
-  | 'view_guest_data'
-  | 'manage_guest_data'
-  | 'manage_conversations'
-  | 'access_system'
-  | 'manage_agents'
-  | 'view_analytics'
-  | 'export_data'
-  | 'manage_settings'
-  | 'manage_users';
+  | 'knowledge.read'
+  | 'guest_requests.create'
+  | 'guest_requests.read'
+  | 'guest_requests.update'
+  | 'conversations.read'
+  | 'conversations.reply'
+  | 'settings.read'
+  | 'settings.update'
+  | 'agents.read'
+  | 'agents.update'
+  | 'system.status.read'
+  | 'tools.execute';
 
 export interface AgentPermission {
   id: PermissionId;
@@ -67,8 +70,8 @@ export interface AgentPermission {
   level: 'read' | 'write' | 'admin';
 }
 
-// Core agent runtime status
-export type AgentStatus = 'active' | 'inactive' | 'maintenance';
+// Core agent runtime status - canonical values only
+export type AgentStatus = 'online' | 'offline' | 'disabled';
 
 // What we expose to the frontend and runtime
 export interface AgentProfile {

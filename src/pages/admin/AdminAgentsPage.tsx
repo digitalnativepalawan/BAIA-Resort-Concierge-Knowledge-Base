@@ -19,33 +19,33 @@ import {
 } from 'lucide-react';
 
 const SKILL_OPTIONS = [
-  { id: 'knowledge_search', label: 'Knowledge Search', description: 'Search and retrieve information from the knowledge base' },
-  { id: 'reservation_management', label: 'Reservations', description: 'Create, view, and manage guest reservations' },
-  { id: 'conversation_management', label: 'Conversations', description: 'Manage chat sessions and message history' },
-  { id: 'system_status', label: 'System Status', description: 'Check system health and operational status' },
+  { id: 'knowledge.search', label: 'Knowledge Search', description: 'Search and retrieve information from the knowledge base' },
+  { id: 'guest_request.create', label: 'Guest Request Create', description: 'Create guest service requests' },
+  { id: 'conversation.reply', label: 'Conversation Reply', description: 'Reply to guest conversations' },
+  { id: 'system.status', label: 'System Status', description: 'Check system health and operational status' },
 ];
 
 const PERMISSION_OPTIONS = [
-  { id: 'read_knowledge', label: 'Read Knowledge', level: 'read' as const },
-  { id: 'write_knowledge', label: 'Write Knowledge', level: 'write' as const },
-  { id: 'manage_reservations', label: 'Manage Reservations', level: 'write' as const },
-  { id: 'view_guest_data', label: 'View Guest Data', level: 'read' as const },
-  { id: 'manage_guest_data', label: 'Manage Guest Data', level: 'write' as const },
-  { id: 'manage_conversations', label: 'Manage Conversations', level: 'write' as const },
-  { id: 'access_system', label: 'Access System', level: 'read' as const },
-  { id: 'manage_agents', label: 'Manage Agents', level: 'admin' as const },
-  { id: 'view_analytics', label: 'View Analytics', level: 'read' as const },
-  { id: 'export_data', label: 'Export Data', level: 'write' as const },
-  { id: 'manage_settings', label: 'Manage Settings', level: 'admin' as const },
-  { id: 'manage_users', label: 'Manage Users', level: 'admin' as const },
+  { id: 'knowledge.read', label: 'Read Knowledge', level: 'read' as const },
+  { id: 'guest_requests.create', label: 'Create Guest Requests', level: 'write' as const },
+  { id: 'guest_requests.read', label: 'Read Guest Requests', level: 'read' as const },
+  { id: 'guest_requests.update', label: 'Update Guest Requests', level: 'write' as const },
+  { id: 'conversations.read', label: 'Read Conversations', level: 'read' as const },
+  { id: 'conversations.reply', label: 'Reply to Conversations', level: 'write' as const },
+  { id: 'settings.read', label: 'Read Settings', level: 'read' as const },
+  { id: 'settings.update', label: 'Update Settings', level: 'admin' as const },
+  { id: 'agents.read', label: 'Read Agents', level: 'read' as const },
+  { id: 'agents.update', label: 'Update Agents', level: 'admin' as const },
+  { id: 'system.status.read', label: 'Read System Status', level: 'read' as const },
+  { id: 'tools.execute', label: 'Execute Tools', level: 'admin' as const },
 ];
 
 const KNOWLEDGE_CATEGORIES = [
-  'resort_info', 'facilities', 'dining', 'activities', 'booking',
-  'policies', 'local_area', 'sustainability', 'general',
+  'Property', 'Rooms', 'Food & Breakfast', 'Transportation',
+  'Activities', 'San Vicente', 'Policies', 'Emergency', 'Other',
 ];
 
-const STATUS_OPTIONS: Agent['status'][] = ['active', 'inactive', 'maintenance'];
+const STATUS_OPTIONS: Agent['status'][] = ['online', 'offline', 'disabled'];
 
 export const AdminAgentsPage: React.FC = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -85,7 +85,7 @@ export const AdminAgentsPage: React.FC = () => {
   };
 
   const handleToggleStatus = async (agent: Agent) => {
-    const newStatus: Agent['status'] = agent.status === 'active' ? 'inactive' : 'active';
+    const newStatus: Agent['status'] = agent.status === 'online' ? 'offline' : 'online';
     await agentService.setAgentStatus(agent.id, newStatus);
     setAgents((prev) => prev.map((a) => a.id === agent.id ? { ...a, status: newStatus } : a));
   };
@@ -176,10 +176,8 @@ export const AdminAgentsPage: React.FC = () => {
               <div
                 key={agent.id}
                 className={`bg-[#080d1a] border rounded-2xl p-5 transition-all ${
-                  agent.status === 'active'
+                  agent.status === 'online'
                     ? 'border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.08)]'
-                    : agent.status === 'maintenance'
-                    ? 'border-yellow-500/40'
                     : 'border-gray-700/40'
                 }`}
               >
@@ -187,17 +185,13 @@ export const AdminAgentsPage: React.FC = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      agent.status === 'active'
+                      agent.status === 'online'
                         ? 'bg-[#00f0ff]/15'
-                        : agent.status === 'maintenance'
-                        ? 'bg-yellow-500/15'
                         : 'bg-gray-700/30'
                     }`}>
                       <Bot className={`w-5 h-5 ${
-                        agent.status === 'active'
+                        agent.status === 'online'
                           ? 'text-[#00f0ff]'
-                          : agent.status === 'maintenance'
-                          ? 'text-yellow-400'
                           : 'text-gray-500'
                       }`} />
                     </div>
@@ -207,10 +201,8 @@ export const AdminAgentsPage: React.FC = () => {
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                    agent.status === 'active'
+                    agent.status === 'online'
                       ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40'
-                      : agent.status === 'maintenance'
-                      ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
                       : 'bg-gray-700/30 text-gray-400 border border-gray-600/40'
                   }`}>
                     {agent.status}
@@ -279,13 +271,13 @@ export const AdminAgentsPage: React.FC = () => {
                   <button
                     onClick={() => handleToggleStatus(agent)}
                     className={`p-2 rounded-lg border transition-all text-xs ${
-                      agent.status === 'active'
+                      agent.status === 'online'
                         ? 'bg-[#10b981]/10 border-[#10b981]/40 text-[#10b981] hover:bg-[#10b981]/20'
                         : 'bg-gray-700/30 border-gray-600/40 text-gray-400 hover:bg-gray-700/50'
                     }`}
-                    title={agent.status === 'active' ? 'Deactivate' : 'Activate'}
+                    title={agent.status === 'online' ? 'Set offline' : 'Set online'}
                   >
-                    {agent.status === 'active' ? <Power className="w-3 h-3" /> : <PowerOff className="w-3 h-3" />}
+                    {agent.status === 'online' ? <Power className="w-3 h-3" /> : <PowerOff className="w-3 h-3" />}
                   </button>
                   <button
                     onClick={() => handleDelete(agent)}
@@ -340,10 +332,10 @@ const AgentEditorModal: React.FC<AgentEditorModalProps> = ({ agent, onSave, onCl
     voice_enabled: agent?.voice_enabled ?? true,
     voice_language: agent?.voice_language || 'en-US',
     voice_name: agent?.voice_name || '',
-    voice_rate: agent?.voice_rate ?? 1.05,
+    voice_rate: agent?.voice_rate ?? 1.0,
     skills: agent?.skills || [],
     permissions: agent?.permissions || [],
-    status: agent?.status || 'active',
+    status: agent?.status || 'online',
     guest_facing: agent?.guest_facing ?? false,
     knowledge_enabled: agent?.knowledge_enabled ?? true,
     knowledge_categories: agent?.knowledge_categories || KNOWLEDGE_CATEGORIES,
@@ -539,21 +531,21 @@ const AgentEditorModal: React.FC<AgentEditorModalProps> = ({ agent, onSave, onCl
                   <span className="text-sm text-gray-300">Enable text-to-speech for this agent</span>
                 </label>
               </Field>
-              <Field label="Voice Name">
-                <input
-                  type="text"
-                  value={form.voice_name}
-                  onChange={(e) => updateField('voice_name', e.target.value)}
-                  placeholder="e.g., nova, alloy, shimmer"
-                  className="w-full bg-[#050811] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none"
-                />
-              </Field>
               <Field label="Voice Language">
                 <input
                   type="text"
                   value={form.voice_language}
                   onChange={(e) => updateField('voice_language', e.target.value)}
                   placeholder="e.g., en-US"
+                  className="w-full bg-[#050811] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none"
+                />
+              </Field>
+              <Field label="Voice Name">
+                <input
+                  type="text"
+                  value={form.voice_name}
+                  onChange={(e) => updateField('voice_name', e.target.value)}
+                  placeholder="e.g., nova, alloy, shimmer"
                   className="w-full bg-[#050811] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none"
                 />
               </Field>
@@ -602,7 +594,7 @@ const AgentEditorModal: React.FC<AgentEditorModalProps> = ({ agent, onSave, onCl
                         onChange={() => toggleArrayItem('knowledge_categories', cat)}
                         className="sr-only"
                       />
-                      {cat.replace(/_/g, ' ')}
+                      {cat}
                     </label>
                   ))}
                 </div>

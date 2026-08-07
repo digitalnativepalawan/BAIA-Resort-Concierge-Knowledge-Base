@@ -518,10 +518,29 @@ async function setup() {
     ]
   });
 
-  // Seed default TALA agent
+  // Seed default TALA agent (create or normalize existing)
   try {
     const existing = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
-    console.log('  [SKIP] Default TALA agent already exists.');
+    // Normalize existing record: update if skills/permissions/status are stale
+    const needsUpdate =
+      existing.status !== 'online' ||
+      !Array.isArray(existing.skills) ||
+      existing.skills.length === 0 ||
+      !Array.isArray(existing.permissions) ||
+      existing.permissions.length === 0;
+
+    if (needsUpdate) {
+      await pb.collection('agents').update(existing.id, {
+        status: 'online',
+        guest_facing: true,
+        skills: ['knowledge.search', 'guest_request.create', 'conversation.reply'],
+        permissions: ['knowledge.read', 'guest_requests.create', 'conversations.reply'],
+        knowledge_categories: ['Property', 'Rooms', 'Food & Breakfast', 'Transportation', 'Activities', 'San Vicente', 'Policies', 'Emergency', 'Other'],
+      });
+      console.log('  [OK] Normalized existing TALA agent (skills/permissions/status).');
+    } else {
+      console.log('  [SKIP] Default TALA agent already exists and is normalized.');
+    }
   } catch (e) {
     await pb.collection('agents').create({
       name: 'TALA',
@@ -535,12 +554,12 @@ async function setup() {
       voice_language: 'en-US',
       voice_gender: 'female',
       voice_name: '',
-      voice_pitch: 1.05,
-      voice_rate: 1.05,
+      voice_pitch: 1.0,
+      voice_rate: 1.0,
       knowledge_enabled: true,
-      knowledge_categories: ['resort_info', 'facilities', 'dining', 'activities', 'booking', 'policies', 'local_area', 'sustainability', 'general'],
-      skills: ['knowledge_search', 'conversation_management'],
-      permissions: ['read_knowledge', 'manage_conversations', 'view_guest_data', 'access_system'],
+      knowledge_categories: ['Property', 'Rooms', 'Food & Breakfast', 'Transportation', 'Activities', 'San Vicente', 'Policies', 'Emergency', 'Other'],
+      skills: ['knowledge.search', 'guest_request.create', 'conversation.reply'],
+      permissions: ['knowledge.read', 'guest_requests.create', 'conversations.reply'],
       status: 'online',
       guest_facing: true
     });

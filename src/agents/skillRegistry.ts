@@ -1,29 +1,29 @@
 import type { AgentSkill, SkillId, PermissionId } from './types';
 
 const SKILLS: Record<SkillId, AgentSkill> = {
-  knowledge_search: {
-    id: 'knowledge_search',
+  'knowledge.search': {
+    id: 'knowledge.search',
     name: 'Knowledge Search',
     description: 'Search and retrieve information from the knowledge base',
-    permissions: ['read_knowledge'],
+    permissions: ['knowledge.read'],
   },
-  reservation_management: {
-    id: 'reservation_management',
-    name: 'Reservation Management',
-    description: 'Create, view, and manage guest reservations',
-    permissions: ['manage_reservations', 'view_guest_data'],
+  'guest_request.create': {
+    id: 'guest_request.create',
+    name: 'Guest Request Create',
+    description: 'Create guest service requests',
+    permissions: ['guest_requests.create'],
   },
-  conversation_management: {
-    id: 'conversation_management',
-    name: 'Conversation Management',
-    description: 'Manage chat sessions and message history',
-    permissions: ['manage_conversations', 'view_guest_data'],
+  'conversation.reply': {
+    id: 'conversation.reply',
+    name: 'Conversation Reply',
+    description: 'Reply to guest conversations',
+    permissions: ['conversations.reply'],
   },
-  system_status: {
-    id: 'system_status',
+  'system.status': {
+    id: 'system.status',
     name: 'System Status',
     description: 'Check system health and operational status',
-    permissions: ['access_system'],
+    permissions: ['system.status.read'],
   },
 };
 

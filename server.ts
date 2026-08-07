@@ -112,7 +112,7 @@ async function ensureServerAuth(): Promise<boolean> {
 // ── Agent helpers: resolve agent profiles from PocketBase ───────────────────
 async function fetchAgentBySlug(slug: string): Promise<any | null> {
   try {
-    const records = await pb.collection('agents').getFullList({
+    const records = await pb.collection('agents').getFullList(200, {
       filter: `slug = "${slug}"`,
     });
     return records[0] || null;
@@ -379,10 +379,31 @@ async function startServer() {
   // TALA Voice Assistant Chat Endpoint (OpenRouter Gateway)
   app.post('/api/chat', async (req, res) => {
     try {
-      const { model, prompt, history, systemInstruction, conversation_id, session_token, agentSlug } = req.body;
+      const { model, prompt, history, conversation_id, session_token, agentSlug } = req.body;
+
+      // Default to tala-concierge if no agentSlug provided
+      const resolvedAgentSlug = agentSlug || 'tala-concierge';
 
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: 'Prompt is required' });
+      }
+
+      // ── Resolve agent profile from DB (trust DB, not client) ──────────
+      let agentProfile: any = null;
+      let activeSystemInstruction = DEFAULT_SYSTEM_INSTRUCTION;
+      let agentModelId: string | null = null;
+
+      agentProfile = await fetchAgentBySlug(resolvedAgentSlug);
+      if (agentProfile) {
+        activeSystemInstruction = agentProfile.system_prompt || DEFAULT_SYSTEM_INSTRUCTION;
+        agentModelId = agentProfile.model_id || null;
+
+        // Block offline/disabled agents (check BEFORE API key to give proper 403)
+        if (agentProfile.status === 'offline' || agentProfile.status === 'disabled') {
+          return res.status(403).json({
+            error: `Agent "${agentProfile.name}" is currently ${agentProfile.status}.`
+          });
+        }
       }
 
       // Server-only API key: do NOT accept browser-supplied keys
@@ -393,24 +414,6 @@ async function startServer() {
         return res.status(503).json({
           error: 'TALA is temporarily unavailable. Please contact resort staff.'
         });
-      }
-
-      // ── Resolve agent profile from DB (trust DB, not client) ──────────
-      let agentProfile: any = null;
-      let activeSystemInstruction = DEFAULT_SYSTEM_INSTRUCTION;
-      let agentModelId: string | null = null;
-
-      if (agentSlug) {
-        agentProfile = await fetchAgentBySlug(agentSlug);
-        if (agentProfile) {
-          activeSystemInstruction = agentProfile.system_prompt || DEFAULT_SYSTEM_INSTRUCTION;
-          agentModelId = agentProfile.model_id || null;
-        }
-      }
-
-      // Fallback: if no agent resolved, use systemInstruction from client
-      if (!agentProfile && systemInstruction && systemInstruction.trim()) {
-        activeSystemInstruction = systemInstruction;
       }
 
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
@@ -523,9 +526,15 @@ async function startServer() {
     }
   });
 
-  // ── Agent Test Endpoint ────────────────────────────────────────────────
+  // ── Agent Test Endpoint (ADMIN AUTH REQUIRED) ──────────────────────────
   app.get('/api/agents/:slug/test', async (req, res) => {
     try {
+      // Require admin authentication
+      const authenticated = await ensureServerAuth();
+      if (!authenticated) {
+        return res.status(401).json({ error: 'Admin authentication required' });
+      }
+
       const { slug } = req.params;
       const agent = await fetchAgentBySlug(slug);
 
@@ -535,8 +544,8 @@ async function startServer() {
 
       // Basic validation
       const issues: string[] = [];
-      if (agent.status !== 'active') {
-        issues.push(`Agent status is '${agent.status}', expected 'active'`);
+      if (agent.status !== 'online') {
+        issues.push(`Agent status is '${agent.status}', expected 'online'`);
       }
       if (!agent.system_prompt || agent.system_prompt.trim().length === 0) {
         issues.push('No system prompt configured');

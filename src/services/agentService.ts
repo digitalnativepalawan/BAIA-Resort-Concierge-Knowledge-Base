@@ -17,9 +17,9 @@ export interface Agent {
   voice_rate: number;
   knowledge_enabled: boolean;
   knowledge_categories: string[];
-  skills: any[];
+  skills: string[];
   permissions: string[];
-  status: 'active' | 'inactive' | 'maintenance' | 'online' | 'offline' | 'disabled';
+  status: 'online' | 'offline' | 'disabled';
   guest_facing: boolean;
 }
 
@@ -37,8 +37,8 @@ function pbRecordToAgent(record: any): Agent {
     voice_language: record.voice_language || 'en-US',
     voice_gender: record.voice_gender || 'female',
     voice_name: record.voice_name || '',
-    voice_pitch: record.voice_pitch || 1.05,
-    voice_rate: record.voice_rate || 1.05,
+    voice_pitch: record.voice_pitch || 1.0,
+    voice_rate: record.voice_rate || 1.0,
     knowledge_enabled: record.knowledge_enabled ?? true,
     knowledge_categories: record.knowledge_categories || [],
     skills: record.skills || [],
@@ -51,8 +51,8 @@ function pbRecordToAgent(record: any): Agent {
 export const agentService = {
   getAgents: async (): Promise<Agent[]> => {
     try {
-      const records = await pb.collection('agents').getFullList({
-        sort: '-created'
+      const records = await pb.collection('agents').getFullList(200, {
+        sort: '-id'
       });
       return records.map(pbRecordToAgent);
     } catch (err) {
@@ -83,7 +83,7 @@ export const agentService = {
 
   getAgentBySlug: async (slug: string): Promise<Agent | null> => {
     try {
-      const records = await pb.collection('agents').getFullList({
+      const records = await pb.collection('agents').getFullList(200, {
         filter: `slug = "${slug}"`,
       });
       return records[0] ? pbRecordToAgent(records[0]) : null;
@@ -107,8 +107,8 @@ export const agentService = {
         voice_language: agent.voice_language || 'en-US',
         voice_gender: agent.voice_gender || 'female',
         voice_name: agent.voice_name || '',
-        voice_pitch: agent.voice_pitch || 1.05,
-        voice_rate: agent.voice_rate || 1.05,
+        voice_pitch: agent.voice_pitch || 1.0,
+        voice_rate: agent.voice_rate || 1.0,
         knowledge_enabled: agent.knowledge_enabled ?? true,
         knowledge_categories: agent.knowledge_categories || [],
         skills: agent.skills || [],
@@ -133,7 +133,7 @@ export const agentService = {
     }
   },
 
-  setAgentStatus: async (id: string, status: string): Promise<boolean> => {
+  setAgentStatus: async (id: string, status: Agent['status']): Promise<boolean> => {
     try {
       await pb.collection('agents').update(id, { status });
       return true;
@@ -161,7 +161,7 @@ export const agentService = {
       if (!unsubscribed) {
         agentService.getAgents().then(callback);
       }
-    }).then(( unsub) => {
+    }).then((unsub) => {
       unsubscribeFn = unsub;
     }).catch(() => {});
 
