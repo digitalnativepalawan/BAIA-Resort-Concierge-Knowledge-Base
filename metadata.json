@@ -1,0 +1,10 @@
+{
+  "name": "TALA Voice Assistant",
+  "description": "Futuristic sci-fi voice assistant with an interactive Arc-Reactor HUD, Web Speech input/output, and Gemini AI backend.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
