@@ -118,9 +118,9 @@ async function getGroundedKnowledgeBase(): Promise<string> {
       return '';
     }
 
-    const records = await pb.collection('knowledge_documents').getFullList({
+    const records = await pb.collection('knowledge_documents').getFullList(200, {
       filter: 'active=true',
-      sort: '-created'
+      sort: '-id'
     });
 
     if (records.length === 0) return '';
@@ -153,7 +153,7 @@ async function validateGuestSession(conversationId: string, sessionToken: string
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || '3000', 10);
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -250,15 +250,13 @@ async function startServer() {
         return res.status(503).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
       }
 
-      const records = await pb.collection('messages').getFullList({
-        filter: `conversation="${conversationId}"`,
-        sort: 'created'
+      const records = await pb.collection('messages').getFullList(200, {
+        filter: `conversation="${conversationId}"`
       });
       const messages = records.map((r: any) => ({
         id: r.id,
         role: r.role === 'assistant' ? 'model' : r.role,
         text: r.content,
-        timestamp: new Date(r.created).toISOString()
       }));
       res.json({ messages });
     } catch (err: any) {

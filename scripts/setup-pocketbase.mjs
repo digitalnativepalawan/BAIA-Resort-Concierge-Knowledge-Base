@@ -12,6 +12,13 @@
  *   1. PocketBase running at http://127.0.0.1:8090
  *   2. Admin superuser created via PocketBase admin UI
  *   3. Set POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD env vars
+ *
+ * PocketBase v0.27 field format notes:
+ *   - select: values[] must be at FIELD level (not in options)
+ *   - relation: collectionId, maxSelect, cascadeDelete at FIELD level
+ *   - text/number: options { min, max } work fine
+ *   - bool/json/file/email/password: work fine
+ *   - indexes: cannot be set via collection creation API; PB manages internally
  */
 
 import PocketBase from 'pocketbase';
@@ -28,6 +35,18 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 }
 
 const pb = new PocketBase(POCKETBASE_URL);
+
+// PocketBase v0.27 requires actual collection IDs (not names) for relation fields.
+// This helper looks up the ID by name after the collection is created.
+async function getCollectionId(name) {
+  try {
+    const coll = await pb.collections.getOne(name);
+    return coll.id;
+  } catch (err) {
+    console.error(`  [ERROR] Cannot resolve collection ID for "${name}":`, err.message);
+    process.exit(1);
+  }
+}
 
 async function createCollectionIfNotExists(name, config) {
   try {
@@ -60,8 +79,6 @@ async function createCollectionIfNotExists(name, config) {
  * @param {Object} rules - { list, view, create, update, delete }
  */
 async function setupAccessRules(collectionName, rules) {
-  // PocketBase SDK expects top-level fields: listRule, viewRule, createRule, updateRule, deleteRule
-  // false maps to null (locked/superuser only), NOT empty string (public)
   const updatePayload = {
     listRule:   rules.list   === false ? null : (rules.list   ?? null),
     viewRule:   rules.view   === false ? null : (rules.view   ?? null),
@@ -97,7 +114,6 @@ async function setupAccessRules(collectionName, rules) {
   let failed = false;
   for (const [key, expected] of Object.entries(updatePayload)) {
     const actual = actualRules[key];
-    // null === null, "" === "", string === string
     if (actual !== expected) {
       console.error(`  [FAIL] "${collectionName}" ${key}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
       failed = true;
@@ -153,13 +169,10 @@ async function setup() {
         name: 'role',
         type: 'select',
         required: false,
-        options: {
-          values: ['owner', 'manager', 'staff'],
-          maxSelect: 1
-        }
+        values: ['owner', 'manager', 'staff'],
+        maxSelect: 1
       }
     ],
-    indexes: [],
     options: {
       allowEmailAuth: true,
       allowOAuth2Auth: false,
@@ -192,10 +205,8 @@ async function setup() {
         name: 'status',
         type: 'select',
         required: false,
-        options: {
-          values: ['active', 'needs_staff', 'closed'],
-          maxSelect: 1
-        }
+        values: ['active', 'needs_staff', 'closed'],
+        maxSelect: 1
       },
       {
         name: 'session_token',
@@ -203,11 +214,11 @@ async function setup() {
         required: false,
         options: { min: 0, max: 64 }
       }
-    ],
-    indexes: ['created', 'session_token']
+    ]
   });
 
-  // 3. Messages collection
+  // 3. Messages collection (requires conversations ID)
+  const conversationsId = await getCollectionId('conversations');
   await createCollectionIfNotExists('messages', {
     name: 'messages',
     type: 'base',
@@ -217,20 +228,16 @@ async function setup() {
         name: 'conversation',
         type: 'relation',
         required: true,
-        options: {
-          collectionId: 'conversations',
-          maxSelect: 1,
-          cascadeDelete: true
-        }
+        collectionId: conversationsId,
+        maxSelect: 1,
+        cascadeDelete: true
       },
       {
         name: 'role',
         type: 'select',
         required: true,
-        options: {
-          values: ['user', 'assistant', 'staff', 'system'],
-          maxSelect: 1
-        }
+        values: ['user', 'assistant', 'staff', 'system'],
+        maxSelect: 1
       },
       {
         name: 'content',
@@ -244,8 +251,7 @@ async function setup() {
         required: false,
         options: { min: 0, max: 100 }
       }
-    ],
-    indexes: ['conversation', 'created']
+    ]
   });
 
   // 4. Knowledge documents collection
@@ -264,13 +270,11 @@ async function setup() {
         name: 'category',
         type: 'select',
         required: false,
-        options: {
-          values: [
-            'Property', 'Rooms', 'Food & Breakfast', 'Transportation',
-            'Activities', 'San Vicente', 'Policies', 'Emergency', 'Other'
-          ],
-          maxSelect: 1
-        }
+        values: [
+          'Property', 'Rooms', 'Food & Breakfast', 'Transportation',
+          'Activities', 'San Vicente', 'Policies', 'Emergency', 'Other'
+        ],
+        maxSelect: 1
       },
       {
         name: 'content',
@@ -281,21 +285,18 @@ async function setup() {
         name: 'source_type',
         type: 'select',
         required: false,
-        options: {
-          values: ['text', 'markdown', 'csv', 'json', 'file', 'manual'],
-          maxSelect: 1
-        }
+        values: ['text', 'markdown', 'csv', 'json', 'file', 'manual'],
+        maxSelect: 1
       },
       {
         name: 'active',
         type: 'bool',
         required: false
       }
-    ],
-    indexes: ['category', 'active']
+    ]
   });
 
-  // 5. Guest requests collection
+  // 5. Guest requests collection (requires conversations ID)
   await createCollectionIfNotExists('guest_requests', {
     name: 'guest_requests',
     type: 'base',
@@ -316,10 +317,8 @@ async function setup() {
         name: 'category',
         type: 'select',
         required: false,
-        options: {
-          values: ['housekeeping', 'transportation', 'food', 'maintenance', 'activity', 'general'],
-          maxSelect: 1
-        }
+        values: ['housekeeping', 'transportation', 'food', 'maintenance', 'activity', 'general'],
+        maxSelect: 1
       },
       {
         name: 'guest_label',
@@ -337,23 +336,18 @@ async function setup() {
         name: 'status',
         type: 'select',
         required: false,
-        options: {
-          values: ['new', 'in_progress', 'needs_staff', 'completed'],
-          maxSelect: 1
-        }
+        values: ['new', 'in_progress', 'needs_staff', 'completed'],
+        maxSelect: 1
       },
       {
         name: 'conversation',
         type: 'relation',
         required: false,
-        options: {
-          collectionId: 'conversations',
-          maxSelect: 1,
-          cascadeDelete: 'set_null'
-        }
+        collectionId: conversationsId,
+        maxSelect: 1,
+        cascadeDelete: false
       }
-    ],
-    indexes: ['category', 'status', 'created']
+    ]
   });
 
   // 6. Settings collection (singleton - single record)
@@ -405,8 +399,7 @@ async function setup() {
         type: 'bool',
         required: false
       }
-    ],
-    indexes: []
+    ]
   });
 
   // 7. Agents collection
@@ -514,18 +507,15 @@ async function setup() {
         name: 'status',
         type: 'select',
         required: false,
-        options: {
-          values: ['online', 'offline', 'disabled'],
-          maxSelect: 1
-        }
+        values: ['online', 'offline', 'disabled'],
+        maxSelect: 1
       },
       {
         name: 'guest_facing',
         type: 'bool',
         required: false
       }
-    ],
-    indexes: ['slug']
+    ]
   });
 
   // Seed default TALA agent
