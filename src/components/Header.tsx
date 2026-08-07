@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Settings, Clock, Activity, Radio, Cpu, ShieldCheck, LogIn, LogOut, Cloud, CloudCheck, User as UserIcon } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Clock, Activity, Radio, Cpu, ShieldCheck, LogIn, LogOut, Cloud, User as UserIcon } from 'lucide-react';
 import { TalaState, TalaSettings } from '../types';
 import { User } from 'firebase/auth';
 
@@ -9,7 +9,6 @@ interface HeaderProps {
   setSettings: React.Dispatch<React.SetStateAction<TalaSettings>>;
   onOpenSettings: () => void;
   hasServerOpenRouterKey?: boolean;
-  hasServerGeminiKey?: boolean;
   currentUser?: User | null;
   onSignIn?: () => void;
   onSignOut?: () => void;
@@ -21,7 +20,6 @@ export const Header: React.FC<HeaderProps> = ({
   setSettings,
   onOpenSettings,
   hasServerOpenRouterKey = false,
-  hasServerGeminiKey = false,
   currentUser = null,
   onSignIn,
   onSignOut
@@ -65,10 +63,10 @@ export const Header: React.FC<HeaderProps> = ({
     hour12: true,
   }).format(now);
 
-  // Check key readiness for current provider
-  const isKeyActive = settings.apiProvider === 'openrouter'
-    ? Boolean(settings.openrouterApiKey?.trim() || settings.customApiKey?.trim() || hasServerOpenRouterKey)
-    : Boolean(settings.googleApiKey?.trim() || settings.customApiKey?.trim() || hasServerGeminiKey);
+  // Check key readiness
+  const isKeyActive = Boolean(
+    settings.openrouterApiKey?.trim() || settings.customApiKey?.trim() || hasServerOpenRouterKey
+  );
 
   // System status color badge mapping
   const getStatusBadge = () => {
@@ -116,11 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const statusInfo = getStatusBadge();
-
-  const currentProviderLabel = settings.apiProvider === 'openrouter' ? 'OPENROUTER' : 'GOOGLE AI';
-  const currentModelLabel = settings.apiProvider === 'openrouter'
-    ? (settings.selectedOpenRouterModel || 'openrouter/free')
-    : (settings.selectedGoogleModel || 'gemini-1.5-flash');
+  const currentModelLabel = settings.selectedOpenRouterModel || 'openrouter/free';
 
   return (
     <header className="relative z-20 w-full bg-[#080d1a]/85 border-b border-[#00f0ff]/30 px-4 sm:px-8 py-3.5 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.8),0_0_15px_rgba(0,240,255,0.15)]">
@@ -139,10 +133,10 @@ export const Header: React.FC<HeaderProps> = ({
           {/* App Title & Version Tag */}
           <div className="flex items-center gap-2.5 mt-0.5">
             <h1 className="text-2xl sm:text-3xl font-orbitron font-extrabold tracking-wider text-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">
-              TALA<span className="text-[#ff007f]">.OS</span>
+              TALA<span className="text-[#00f0ff]">.AI</span>
             </h1>
             <span className="font-share text-[10px] px-2 py-0.5 border border-[#00f0ff]/40 rounded bg-[#00f0ff]/10 text-[#00f0ff] font-semibold tracking-wider uppercase shadow-[0_0_8px_rgba(0,240,255,0.2)]">
-              {currentProviderLabel} // {currentModelLabel.split('/').pop()}
+              OPENROUTER // {currentModelLabel.split('/').pop()}
             </span>
           </div>
         </div>
@@ -187,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden lg:flex items-center gap-2 font-share text-[10px] uppercase tracking-wider">
             <div className="flex flex-col items-end px-2 py-1 bg-[#0a0f1d]/80 border border-[#00f0ff]/20 rounded">
               <span className="text-gray-400 text-[8px]">ENGINE</span>
-              <span className="text-[#00f0ff] font-bold">{settings.apiProvider.toUpperCase()}</span>
+              <span className="text-[#00f0ff] font-bold">OPENROUTER</span>
             </div>
             <div className="flex flex-col items-end px-2 py-1 bg-[#0a0f1d]/80 border border-[#00f0ff]/20 rounded">
               <span className="text-gray-400 text-[8px]">LATENCY</span>
@@ -197,7 +191,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action HUD Buttons */}
           <div className="flex items-center gap-2">
-            {/* Firebase Auth & Cloud Sync Pill */}
+            {/* Cloud Sync Auth Pill */}
             {currentUser ? (
               <div className="flex items-center gap-1.5 bg-[#0a0f1d]/90 border border-[#10b981]/50 rounded-lg px-2.5 py-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                 {currentUser.photoURL ? (
@@ -215,12 +209,12 @@ export const Header: React.FC<HeaderProps> = ({
                     {currentUser.displayName || currentUser.email?.split('@')[0] || 'SYNCED'}
                   </span>
                   <span className="text-[8px] text-emerald-400/80 flex items-center gap-0.5">
-                    <Cloud className="w-2.5 h-2.5" /> FIRESTORE
+                    <Cloud className="w-2.5 h-2.5" /> CLOUD SYNC
                   </span>
                 </div>
                 <button
                   onClick={onSignOut}
-                  title="Sign out of Firebase"
+                  title="Sign out of Cloud Sync"
                   className="p-1 hover:text-[#ef4444] text-gray-400 transition-colors ml-1"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -229,11 +223,11 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onSignIn}
-                title="Sign in with Google to sync voice history with Firebase"
+                title="Sign in to sync session data across devices"
                 className="px-2.5 py-1.5 rounded-lg bg-[#00f0ff]/10 border border-[#00f0ff]/50 text-[#00f0ff] hover:bg-[#00f0ff]/20 hover:border-[#00f0ff] transition-all flex items-center gap-1.5 font-share text-xs font-bold uppercase tracking-wider"
               >
                 <LogIn className="w-3.5 h-3.5 text-[#00f0ff]" />
-                <span className="hidden sm:inline">FIREBASE</span> SIGN IN
+                <span className="hidden sm:inline">CLOUD</span> SIGN IN
               </button>
             )}
 

@@ -1,13 +1,25 @@
 export type TalaState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING' | 'ERROR';
 
-export type ApiProvider = 'openrouter' | 'google';
+export interface OpenRouterPricing {
+  prompt: string | number;
+  completion: string | number;
+  request?: string | number;
+  image?: string | number;
+}
 
-export interface ModelOption {
+export interface OpenRouterModel {
   id: string;
   name: string;
-  tier: 'free' | 'paid' | 'ultra-fast';
-  provider: ApiProvider;
   description?: string;
+  context_length: number;
+  pricing: OpenRouterPricing;
+  architecture?: {
+    modality?: string;
+    tokenizer?: string;
+    instruct_type?: string;
+  };
+  supported_parameters?: string[];
+  is_free: boolean;
 }
 
 export interface TelemetryLogEntry {
@@ -36,11 +48,8 @@ export interface TalaSettings {
   pitch: number;
   rate: number;
   selectedVoiceName: string;
-  apiProvider: ApiProvider;
   openrouterApiKey: string;
-  googleApiKey: string;
   selectedOpenRouterModel: string;
-  selectedGoogleModel: string;
   customApiKey?: string; // Backwards compatibility alias
   systemInstruction: string;
   autoSpeak: boolean;
@@ -49,6 +58,17 @@ export interface TalaSettings {
   useHybridNeural: boolean;
 }
 
+export type KnowledgeCategory = 
+  | 'Property'
+  | 'Rooms'
+  | 'Food & Breakfast'
+  | 'Transportation'
+  | 'Activities'
+  | 'San Vicente'
+  | 'Policies'
+  | 'Emergency'
+  | 'Other';
+
 export interface KnowledgeFile {
   id: string;
   name: string;
@@ -56,4 +76,43 @@ export interface KnowledgeFile {
   content: string;
   type: string;
   uploadedAt: string;
+  category?: KnowledgeCategory;
+  description?: string;
+}
+
+export type GuestRequestCategory = 
+  | 'housekeeping'
+  | 'transportation'
+  | 'food'
+  | 'maintenance'
+  | 'activity'
+  | 'general';
+
+export type GuestRequestStatus = 
+  | 'new'
+  | 'in_progress'
+  | 'needs_staff'
+  | 'completed';
+
+export interface GuestRequest {
+  id: string;
+  title: string;
+  description: string;
+  category: GuestRequestCategory;
+  guestLabel?: string;
+  room?: string;
+  status: GuestRequestStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ConversationSession {
+  id: string;
+  guestLabel: string;
+  room?: string;
+  lastMessage: string;
+  lastTimestamp: string;
+  status: 'active' | 'needs_staff' | 'closed';
+  messageCount: number;
+  messages: ChatMessage[];
 }

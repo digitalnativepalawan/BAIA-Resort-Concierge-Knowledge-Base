@@ -8,6 +8,7 @@ interface TelemetryLogProps {
   hasCustomKey: boolean;
   activeVoiceName?: string;
   speechVolume?: number;
+  activeModelName?: string;
 }
 
 export const TelemetryLog: React.FC<TelemetryLogProps> = ({
@@ -16,7 +17,8 @@ export const TelemetryLog: React.FC<TelemetryLogProps> = ({
   hasServerKey,
   hasCustomKey,
   activeVoiceName,
-  speechVolume = 0.5
+  speechVolume = 0.5,
+  activeModelName = 'openrouter/free'
 }) => {
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -100,8 +102,9 @@ export const TelemetryLog: React.FC<TelemetryLogProps> = ({
             <span className="text-amber-400 font-bold">NEEDS KEY</span>
           )}
         </div>
-        <div className="px-2 py-1 bg-[#050811]/60 rounded border border-[#00f0ff]/10 text-[#00f0ff]/80 hidden sm:block">
-          <span className="text-gray-400">MODEL:</span> <span className="text-[#00f0ff]">gemini-2.5-flash</span>
+        <div className="px-2 py-1 bg-[#050811]/60 rounded border border-[#00f0ff]/10 text-[#00f0ff]/80 hidden sm:block truncate">
+          <span className="text-gray-400">MODEL:</span>{' '}
+          <span className="text-[#00f0ff]">{activeModelName.split('/').pop()}</span>
         </div>
       </div>
 

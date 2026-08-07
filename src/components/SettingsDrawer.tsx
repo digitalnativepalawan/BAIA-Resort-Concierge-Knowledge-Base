@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Sliders, Volume2, Shield, RotateCcw, Check, Sparkles, Cpu, Radio, ShieldCheck, Zap } from 'lucide-react';
-import { TalaSettings, VoiceOption, ApiProvider, ModelOption } from '../types';
+import { X, Key, Sliders, Volume2, Shield, RotateCcw, Check, Sparkles, Cpu, Radio, ShieldCheck, Zap, Info, Play } from 'lucide-react';
+import { TalaSettings, VoiceOption } from '../types';
+import { OpenRouterModelSelector } from './OpenRouterModelSelector';
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -9,71 +10,11 @@ interface SettingsDrawerProps {
   onUpdateSettings: (newSettings: Partial<TalaSettings>) => void;
   voices: VoiceOption[];
   hasServerOpenRouterKey?: boolean;
-  hasServerGeminiKey?: boolean;
   onTestVoice?: () => void;
 }
 
-const OPENROUTER_MODELS: ModelOption[] = [
-  {
-    id: 'openrouter/free',
-    name: 'Auto Free Router (openrouter/free)',
-    tier: 'free',
-    provider: 'openrouter',
-    description: 'Automatically routes queries to top performing zero-cost models.'
-  },
-  {
-    id: 'meta-llama/llama-3.3-70b-instruct:free',
-    name: 'Meta Llama 3.3 70B Instruct (Free)',
-    tier: 'free',
-    provider: 'openrouter',
-    description: 'High intelligence 70B model with zero API charges.'
-  },
-  {
-    id: 'google/gemini-2.5-flash',
-    name: 'Google Gemini 2.5 Flash (Paid)',
-    tier: 'ultra-fast',
-    provider: 'openrouter',
-    description: 'Ultra-low latency next-gen multimodal engine.'
-  },
-  {
-    id: 'anthropic/claude-3.5-haiku',
-    name: 'Anthropic Claude 3.5 Haiku (Paid)',
-    tier: 'paid',
-    provider: 'openrouter',
-    description: 'Fast, precise, highly intelligent conversational model.'
-  },
-  {
-    id: 'openai/gpt-4o-mini',
-    name: 'OpenAI GPT-4o Mini (Paid)',
-    tier: 'paid',
-    provider: 'openrouter',
-    description: 'Lightweight, rapid OpenAI model.'
-  }
-];
-
-const GOOGLE_MODELS: ModelOption[] = [
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash (Default)',
-    tier: 'ultra-fast',
-    provider: 'google',
-    description: 'Fast, balanced Google AI Studio model.'
-  },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash (Experimental)',
-    tier: 'ultra-fast',
-    provider: 'google',
-    description: 'Next-gen flash architecture.'
-  },
-  {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    tier: 'paid',
-    provider: 'google',
-    description: 'High capacity Google AI model.'
-  }
-];
+const DEFAULT_SYSTEM_INSTRUCTION =
+  "You are TALA, the AI concierge for BAIA. You help guests with questions about their stay, the property, local transportation, food, activities, San Vicente, and information contained in the BAIA knowledge base. Speak naturally, warmly, clearly, and concisely. Prioritize information from the supplied BAIA knowledge base. Never invent property information when the knowledge base does not contain the answer. When appropriate, tell the guest that staff can assist.";
 
 export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   isOpen,
@@ -82,37 +23,59 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   onUpdateSettings,
   voices,
   hasServerOpenRouterKey = false,
-  hasServerGeminiKey = false,
   onTestVoice
 }) => {
   const [openrouterKeyInput, setOpenrouterKeyInput] = useState(settings.openrouterApiKey || '');
-  const [googleKeyInput, setGoogleKeyInput] = useState(settings.googleApiKey || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
   const [onlyFemaleFilter, setOnlyFemaleFilter] = useState(true);
 
   // Sync internal state when settings prop updates externally
   useEffect(() => {
     setOpenrouterKeyInput(settings.openrouterApiKey || '');
-    setGoogleKeyInput(settings.googleApiKey || '');
-  }, [settings.openrouterApiKey, settings.googleApiKey]);
+  }, [settings.openrouterApiKey]);
 
   if (!isOpen) return null;
 
-  const activeProvider = settings.apiProvider || 'openrouter';
-
-  // Check if current active provider key is ready
-  const isKeyActive = activeProvider === 'openrouter'
-    ? Boolean(openrouterKeyInput.trim() || settings.customApiKey?.trim() || hasServerOpenRouterKey)
-    : Boolean(googleKeyInput.trim() || settings.customApiKey?.trim() || hasServerGeminiKey);
+  const isKeyActive = Boolean(
+    openrouterKeyInput.trim() || settings.customApiKey?.trim() || hasServerOpenRouterKey
+  );
 
   const handleSaveKeys = () => {
     onUpdateSettings({
       openrouterApiKey: openrouterKeyInput.trim(),
-      googleApiKey: googleKeyInput.trim(),
-      customApiKey: activeProvider === 'openrouter' ? openrouterKeyInput.trim() : googleKeyInput.trim()
+      customApiKey: openrouterKeyInput.trim()
     });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2000);
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          openrouterApiKey: openrouterKeyInput.trim(),
+          model: settings.selectedOpenRouterModel || 'openrouter/free',
+          prompt: 'Connection test string. Respond with single word "ONLINE".',
+          systemInstruction: 'Respond with "ONLINE".'
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.responseText) {
+        setTestResult({ success: true, msg: `Connection verified (${data.model || 'OpenRouter'}).` });
+      } else {
+        setTestResult({ success: false, msg: data.error || 'Connection failed.' });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, msg: err.message || 'Network test failed.' });
+    } finally {
+      setTestingConnection(false);
+    }
   };
 
   const handleClose = () => {
@@ -124,23 +87,20 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     onUpdateSettings({
       pitch: 1.05,
       rate: 1.05,
-      apiProvider: 'openrouter',
       openrouterApiKey: '',
-      googleApiKey: '',
       selectedOpenRouterModel: 'openrouter/free',
-      selectedGoogleModel: 'gemini-1.5-flash',
       customApiKey: '',
-      systemInstruction:
-        "You are TALA (Tactical Artificial Intelligence Assistant), a highly advanced sci-fi AI interface created to deliver precise, intelligent, concise tactical assessments and answers. Maintain a serene, confident, and professional futuristic persona. Keep responses direct, elegant, and well-structured, formatted for both audio vocalization and HUD screen display. Avoid conversational fluff or robotic repetition.",
+      systemInstruction: DEFAULT_SYSTEM_INSTRUCTION,
       autoSpeak: true,
       soundEnabled: true,
       useHybridNeural: true,
+      continuousListening: false,
     });
     setOpenrouterKeyInput('');
-    setGoogleKeyInput('');
+    setTestResult(null);
   };
 
-  // Filter voices based on toggle
+  // Filter voices
   const displayedVoices = onlyFemaleFilter
     ? voices.filter((v) => v.gender === 'female' || /(samantha|zira|victoria|karen|jenny|aria|eva|monica|serena|siri|female|google.*us|google.*uk|natural)/i.test(v.name))
     : voices;
@@ -166,7 +126,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             </button>
           </div>
 
-          {/* REAL-TIME SYSTEM STATUS LED BADGE */}
+          {/* REAL-TIME SYSTEM STATUS BADGE */}
           <div className="mb-6 p-3.5 rounded-xl bg-[#030712] border border-[#00f0ff]/30 flex items-center justify-between shadow-[0_0_15px_rgba(0,240,255,0.1)]">
             <div className="flex items-center gap-3">
               <span
@@ -178,209 +138,116 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               />
               <div className="flex flex-col">
                 <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">
-                  REAL-TIME API CONNECTION
+                  AI CONNECTION
                 </span>
                 <span
                   className={`text-xs font-orbitron font-bold tracking-wider ${
                     isKeyActive ? 'text-emerald-400' : 'text-red-400'
                   }`}
                 >
-                  {isKeyActive ? '[ CONNECTED // READY ]' : '[ OFFLINE // MISSING KEY ]'}
+                  {isKeyActive ? '● CONNECTED' : '● DISCONNECTED'}
                 </span>
               </div>
             </div>
-            <span className="text-[10px] font-mono text-cyan-300 bg-[#00f0ff]/10 px-2 py-1 rounded border border-[#00f0ff]/30 uppercase font-semibold">
-              {activeProvider === 'openrouter' ? 'OPENROUTER PRIMARY' : 'GOOGLE BACKUP'}
+            <span className="text-[10px] font-mono text-cyan-300 bg-[#00f0ff]/10 px-2.5 py-1 rounded border border-[#00f0ff]/30 uppercase font-semibold">
+              OpenRouter AI
             </span>
           </div>
 
           <div className="space-y-6">
 
-            {/* 1. API PROVIDER SWITCH */}
-            <div className="p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/20 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* 1. OPENROUTER API KEY CONFIGURATION */}
+            <div className="p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/30 space-y-3">
+              <div className="flex items-center justify-between border-b border-[#00f0ff]/20 pb-2">
                 <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
-                  <Cpu className="w-4 h-4 text-[#00f0ff]" />
-                  <span>LLM API Provider Switch</span>
+                  <Key className="w-3.5 h-3.5" />
+                  <span>OpenRouter API Key</span>
                 </label>
+                {openrouterKeyInput.trim() ? (
+                  <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
+                    KEY ACTIVE
+                  </span>
+                ) : hasServerOpenRouterKey ? (
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                    SERVER KEY ACTIVE
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/30">
+                    NO KEY ENTERED
+                  </span>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                {/* OpenRouter Button */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  value={openrouterKeyInput}
+                  onChange={(e) => {
+                    setOpenrouterKeyInput(e.target.value);
+                    onUpdateSettings({ openrouterApiKey: e.target.value.trim() });
+                  }}
+                  onBlur={handleSaveKeys}
+                  placeholder="sk-or-v1-..."
+                  className="flex-1 px-3 py-2 bg-[#080d1a] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-lg text-xs font-mono text-white placeholder-gray-600 focus:outline-none"
+                />
                 <button
                   type="button"
-                  onClick={() => onUpdateSettings({ apiProvider: 'openrouter' })}
-                  className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                    activeProvider === 'openrouter'
-                      ? 'bg-[#00f0ff]/15 border-[#00f0ff] text-white shadow-[0_0_15px_rgba(0,240,255,0.25)]'
-                      : 'bg-[#080d1a] border-[#00f0ff]/20 text-gray-400 hover:border-[#00f0ff]/50'
-                  }`}
+                  onClick={handleSaveKeys}
+                  className="px-3 py-2 bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-slate-950 font-mono font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0"
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-orbitron font-bold text-[#00f0ff]">PRIMARY</span>
-                    {activeProvider === 'openrouter' && (
-                      <span className="w-2 h-2 rounded-full bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]" />
-                    )}
-                  </div>
-                  <span className="text-sm font-share font-bold text-white mt-1">OpenRouter AI</span>
-                  <span className="text-[10px] font-mono text-gray-400 mt-0.5">OpenAI Compatible</span>
-                </button>
-
-                {/* Google AI Studio Button */}
-                <button
-                  type="button"
-                  onClick={() => onUpdateSettings({ apiProvider: 'google' })}
-                  className={`p-3 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                    activeProvider === 'google'
-                      ? 'bg-[#ff007f]/15 border-[#ff007f] text-white shadow-[0_0_15px_rgba(255,0,127,0.25)]'
-                      : 'bg-[#080d1a] border-[#00f0ff]/20 text-gray-400 hover:border-[#ff007f]/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-orbitron font-bold text-[#ff007f]">BACKUP</span>
-                    {activeProvider === 'google' && (
-                      <span className="w-2 h-2 rounded-full bg-[#ff007f] shadow-[0_0_8px_#ff007f]" />
-                    )}
-                  </div>
-                  <span className="text-sm font-share font-bold text-white mt-1">Google AI Studio</span>
-                  <span className="text-[10px] font-mono text-gray-400 mt-0.5">Gemini Engine</span>
+                  {savedSuccess ? <Check className="w-3.5 h-3.5" /> : null}
+                  <span>SAVE</span>
                 </button>
               </div>
+
+              <div className="pt-1 flex items-center justify-between">
+                <p className="text-[10px] text-gray-400 font-mono">
+                  {hasServerOpenRouterKey
+                    ? 'Using server-configured environment key by default.'
+                    : 'Enter your personal key or rely on server deployment.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={testingConnection}
+                  className="px-2.5 py-1 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/40 text-[#00f0ff] text-[10px] font-mono font-bold rounded transition-colors flex items-center gap-1 shrink-0"
+                >
+                  {testingConnection ? (
+                    <Sparkles className="w-3 h-3 animate-spin text-[#00f0ff]" />
+                  ) : (
+                    <Zap className="w-3 h-3 text-[#00f0ff]" />
+                  )}
+                  <span>TEST CONNECTION</span>
+                </button>
+              </div>
+
+              {testResult && (
+                <div
+                  className={`p-2 rounded text-[10px] font-mono border ${
+                    testResult.success
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
+                      : 'bg-red-500/10 border-red-500/40 text-red-300'
+                  }`}
+                >
+                  {testResult.msg}
+                </div>
+              )}
             </div>
 
-            {/* 2. OPENROUTER KEY & MODEL CONFIGURATION */}
-            {activeProvider === 'openrouter' && (
-              <div className="p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/30 space-y-4">
-                <div className="flex items-center justify-between border-b border-[#00f0ff]/20 pb-2">
-                  <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
-                    <Key className="w-3.5 h-3.5" />
-                    <span>OpenRouter API Key</span>
-                  </label>
-                  {openrouterKeyInput.trim() ? (
-                    <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
-                      KEY ACTIVE
-                    </span>
-                  ) : hasServerOpenRouterKey ? (
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                      SERVER KEY ACTIVE
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-mono text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/30">
-                      NO KEY ENTERED
-                    </span>
-                  )}
-                </div>
+            {/* 2. LIVE OPENROUTER MODEL SELECTOR */}
+            <div className="space-y-2">
+              <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
+                <Cpu className="w-4 h-4 text-[#00f0ff]" />
+                <span>OpenRouter Model Catalog</span>
+              </label>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password"
-                    value={openrouterKeyInput}
-                    onChange={(e) => {
-                      setOpenrouterKeyInput(e.target.value);
-                      onUpdateSettings({ openrouterApiKey: e.target.value.trim() });
-                    }}
-                    onBlur={handleSaveKeys}
-                    placeholder="sk-or-v1-..."
-                    className="flex-1 px-3 py-2 bg-[#080d1a] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-lg text-xs font-mono text-white placeholder-gray-600 focus:outline-none"
-                  />
-                  <button
-                    onClick={handleSaveKeys}
-                    className="px-3 py-2 bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-slate-950 font-mono font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0"
-                  >
-                    {savedSuccess ? <Check className="w-3.5 h-3.5" /> : null}
-                    <span>SAVE</span>
-                  </button>
-                </div>
+              <OpenRouterModelSelector
+                selectedModelId={settings.selectedOpenRouterModel || 'openrouter/free'}
+                onSelectModel={(modelId) => onUpdateSettings({ selectedOpenRouterModel: modelId })}
+              />
+            </div>
 
-                {/* OpenRouter Model Selector Dropdown */}
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-[11px] font-mono font-bold text-cyan-200 flex items-center justify-between">
-                    <span>OPENROUTER MODEL SELECTOR</span>
-                    <span className="text-[9px] text-gray-400 font-normal">Free & Paid Tiers</span>
-                  </label>
-                  <select
-                    value={settings.selectedOpenRouterModel || 'openrouter/free'}
-                    onChange={(e) => onUpdateSettings({ selectedOpenRouterModel: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-[#080d1a] border border-[#00f0ff]/40 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-[#00f0ff]"
-                  >
-                    {OPENROUTER_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        [{m.tier.toUpperCase()}] {m.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-gray-400 font-mono italic">
-                    {OPENROUTER_MODELS.find(m => m.id === settings.selectedOpenRouterModel)?.description || 'Selected OpenRouter model endpoint.'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* 3. GOOGLE AI STUDIO BACKUP CONFIGURATION */}
-            {activeProvider === 'google' && (
-              <div className="p-4 rounded-xl bg-[#050811] border border-[#ff007f]/30 space-y-4">
-                <div className="flex items-center justify-between border-b border-[#ff007f]/20 pb-2">
-                  <label className="text-xs font-mono font-bold text-[#ff007f] flex items-center gap-1.5 uppercase">
-                    <Key className="w-3.5 h-3.5" />
-                    <span>Google AI Studio API Key</span>
-                  </label>
-                  {googleKeyInput.trim() ? (
-                    <span className="text-[10px] font-mono text-pink-400 font-bold bg-pink-500/10 px-2 py-0.5 rounded border border-pink-500/30">
-                      KEY ACTIVE
-                    </span>
-                  ) : hasServerGeminiKey ? (
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                      SERVER KEY ACTIVE
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-mono text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/30">
-                      NO KEY ENTERED
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password"
-                    value={googleKeyInput}
-                    onChange={(e) => {
-                      setGoogleKeyInput(e.target.value);
-                      onUpdateSettings({ googleApiKey: e.target.value.trim() });
-                    }}
-                    onBlur={handleSaveKeys}
-                    placeholder="AIzaSy..."
-                    className="flex-1 px-3 py-2 bg-[#080d1a] border border-[#ff007f]/30 focus:border-[#ff007f] rounded-lg text-xs font-mono text-white placeholder-gray-600 focus:outline-none"
-                  />
-                  <button
-                    onClick={handleSaveKeys}
-                    className="px-3 py-2 bg-[#ff007f] hover:bg-[#ff007f]/80 text-white font-mono font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0"
-                  >
-                    {savedSuccess ? <Check className="w-3.5 h-3.5" /> : null}
-                    <span>SAVE</span>
-                  </button>
-                </div>
-
-                {/* Google Backup Model Selector */}
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-[11px] font-mono font-bold text-pink-200">
-                    GOOGLE GEMINI MODEL
-                  </label>
-                  <select
-                    value={settings.selectedGoogleModel || 'gemini-1.5-flash'}
-                    onChange={(e) => onUpdateSettings({ selectedGoogleModel: e.target.value })}
-                    className="w-full px-3 py-2.5 bg-[#080d1a] border border-[#ff007f]/40 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-[#ff007f]"
-                  >
-                    {GOOGLE_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* 4. TEST VOICE DIAGNOSTIC BUTTON */}
+            {/* 3. VOICE DIAGNOSTIC & PROFILE */}
             <div className="p-4 rounded-xl bg-[#030712] border border-[#00f0ff]/40 space-y-3 shadow-[0_0_20px_rgba(0,240,255,0.15)]">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
@@ -390,7 +257,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               </div>
 
               <p className="text-[11px] text-gray-300 leading-relaxed font-mono">
-                Run an immediate local vocalization diagnostic test using the selected female browser voice profile.
+                Run a vocalization test using the selected female browser voice profile.
               </p>
 
               <button
@@ -398,14 +265,14 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 onClick={() => {
                   if (onTestVoice) onTestVoice();
                 }}
-                className="w-full py-3 bg-gradient-to-r from-[#00f0ff] to-[#00a2ff] text-slate-950 font-orbitron font-bold text-xs rounded-lg shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
+                className="w-full py-2.5 bg-gradient-to-r from-[#00f0ff] to-[#00a2ff] text-slate-950 font-orbitron font-bold text-xs rounded-lg shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
               >
                 <Radio className="w-4 h-4 text-slate-950 animate-pulse" />
                 <span>TEST VOICE DIAGNOSTIC</span>
               </button>
             </div>
 
-            {/* 5. VOICE PROFILE SELECTOR */}
+            {/* VOICE SELECTOR */}
             <div className="space-y-2.5 p-3 bg-[#050811] border border-[#00f0ff]/20 rounded-xl">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
@@ -413,6 +280,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                   <span>Female Voice Profile</span>
                 </label>
                 <button
+                  type="button"
                   onClick={() => setOnlyFemaleFilter(!onlyFemaleFilter)}
                   className="text-[10px] font-mono px-2 py-0.5 rounded border border-[#00f0ff]/30 text-[#00f0ff] bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 transition-colors"
                 >
@@ -437,8 +305,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               </select>
             </div>
 
-            {/* 6. PITCH & SPEED SLIDERS */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* PITCH & SPEED SLIDERS */}
+            <div className="grid grid-cols-2 gap-4 p-3 bg-[#050811] border border-[#00f0ff]/20 rounded-xl">
               <div className="space-y-1">
                 <div className="flex justify-between text-xs font-mono">
                   <span className="text-gray-400">PITCH:</span>
@@ -451,7 +319,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                   step="0.05"
                   value={settings.pitch}
                   onChange={(e) => onUpdateSettings({ pitch: parseFloat(e.target.value) })}
-                  className="w-full accent-[#00f0ff] bg-[#050811] h-1.5 rounded"
+                  className="w-full accent-[#00f0ff] bg-[#050811] h-1.5 rounded cursor-pointer"
                 />
               </div>
 
@@ -467,16 +335,25 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                   step="0.05"
                   value={settings.rate}
                   onChange={(e) => onUpdateSettings({ rate: parseFloat(e.target.value) })}
-                  className="w-full accent-[#00f0ff] bg-[#050811] h-1.5 rounded"
+                  className="w-full accent-[#00f0ff] bg-[#050811] h-1.5 rounded cursor-pointer"
                 />
               </div>
             </div>
 
-            {/* 7. SYSTEM PERSONA INSTRUCTIONS */}
+            {/* 4. TALA PERSONA INSTRUCTIONS */}
             <div className="space-y-2">
-              <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
-                <Shield className="w-3.5 h-3.5" />
-                <span>TALA System Persona Instructions</span>
+              <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center justify-between uppercase">
+                <span className="flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>TALA System Persona Instructions</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ systemInstruction: DEFAULT_SYSTEM_INSTRUCTION })}
+                  className="text-[9px] font-mono text-cyan-400 underline hover:text-white"
+                >
+                  RESET TO BAIA DEFAULT
+                </button>
               </label>
               <textarea
                 rows={4}
@@ -486,7 +363,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               />
             </div>
 
-            {/* 8. TOGGLES */}
+            {/* 5. BEHAVIOR TOGGLES */}
             <div className="space-y-3 pt-2">
               <label className="flex items-center justify-between text-xs font-mono cursor-pointer select-none p-2 rounded bg-[#050811] border border-[#00f0ff]/20">
                 <div className="flex flex-col">
@@ -501,8 +378,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 />
               </label>
 
-              <label className="flex items-center justify-between text-xs font-mono cursor-pointer select-none">
-                <span className="text-gray-300">AUTO-VOCALIZE RESPONSES</span>
+              <label className="flex items-center justify-between text-xs font-mono cursor-pointer select-none p-2 rounded bg-[#050811] border border-[#00f0ff]/20">
+                <span className="text-gray-300 font-bold">AUTO-VOCALIZE RESPONSES</span>
                 <input
                   type="checkbox"
                   checked={settings.autoSpeak}
@@ -511,8 +388,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 />
               </label>
 
-              <label className="flex items-center justify-between text-xs font-mono cursor-pointer select-none">
-                <span className="text-gray-300">SCI-FI AUDIO CHIMES & SFX</span>
+              <label className="flex items-center justify-between text-xs font-mono cursor-pointer select-none p-2 rounded bg-[#050811] border border-[#00f0ff]/20">
+                <span className="text-gray-300 font-bold">SCI-FI AUDIO CHIMES & SFX</span>
                 <input
                   type="checkbox"
                   checked={settings.soundEnabled}
@@ -521,12 +398,27 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 />
               </label>
             </div>
+
+            {/* 6. ADVANCED DIAGNOSTICS */}
+            <div className="p-3 rounded-xl bg-[#030712] border border-[#00f0ff]/20 space-y-2">
+              <label className="text-[10px] font-mono font-bold text-gray-400 flex items-center gap-1 uppercase">
+                <Info className="w-3.5 h-3.5 text-[#00f0ff]" />
+                <span>ADVANCED DIAGNOSTICS</span>
+              </label>
+              <div className="text-[10px] font-mono text-gray-400 space-y-1">
+                <p>Engine: OpenRouter Unified Gateway</p>
+                <p>Selected Model ID: {settings.selectedOpenRouterModel || 'openrouter/free'}</p>
+                <p>Web Speech API: Available</p>
+                <p>Cloud Storage: Enabled</p>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="pt-6 border-t border-[#00f0ff]/20 flex items-center justify-between">
           <button
+            type="button"
             onClick={handleResetDefaults}
             className="flex items-center gap-1 text-xs font-mono text-gray-400 hover:text-white transition-colors"
           >
@@ -535,6 +427,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={handleClose}
             className="px-5 py-2.5 bg-gradient-to-r from-[#00f0ff] to-[#00a2ff] text-slate-950 font-orbitron font-bold text-xs rounded-lg shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-transform active:scale-95 uppercase tracking-wider"
           >

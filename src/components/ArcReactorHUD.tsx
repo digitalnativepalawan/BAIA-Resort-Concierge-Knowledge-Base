@@ -301,12 +301,12 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
             
             {/* Core Symbol / State Display */}
             <div className="flex flex-col items-center justify-center text-center p-2 z-30">
-              <span className="text-[10px] font-mono tracking-widest text-[#00f0ff] uppercase opacity-80 mb-0.5">
-                {state === 'IDLE' && 'READY'}
-                {state === 'LISTENING' && 'LISTEN'}
-                {state === 'PROCESSING' && 'THINK'}
-                {state === 'SPEAKING' && 'VOCAL'}
-                {state === 'ERROR' && 'ALERT'}
+              <span className="text-[10px] font-mono tracking-widest text-[#00f0ff] uppercase opacity-90 mb-0.5 font-bold">
+                {state === 'IDLE' && 'Ready'}
+                {state === 'LISTENING' && 'Listening...'}
+                {state === 'PROCESSING' && 'Thinking...'}
+                {state === 'SPEAKING' && 'Speaking...'}
+                {state === 'ERROR' && 'Alert'}
               </span>
 
               {/* Central Core Icon or Status Indicator */}
@@ -328,16 +328,20 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
                 )}
               </div>
 
-              <span className="text-[9px] font-mono text-[#00f0ff]/70 group-hover:text-[#00f0ff] uppercase tracking-wider">
-                {state === 'LISTENING' ? 'SPEAK NOW' : 'TOUCH CORE'}
+              <span className="text-[10px] font-sans font-semibold text-[#00f0ff]/90 group-hover:text-[#00f0ff] uppercase tracking-wider">
+                {state === 'LISTENING' ? 'Speak Now' : 'Talk to TALA'}
               </span>
             </div>
           </div>
         </button>
 
         {/* Orbiting HUD Status Tags */}
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-[#050811]/90 border border-[#00f0ff]/40 shadow-[0_0_15px_rgba(0,240,255,0.2)] text-[10px] font-mono text-[#00f0ff] tracking-widest whitespace-nowrap">
-          SYSTEM // {state}
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-[#050811]/90 border border-[#00f0ff]/40 shadow-[0_0_15px_rgba(0,240,255,0.2)] text-[10px] font-sans text-[#00f0ff] font-bold tracking-wider whitespace-nowrap">
+          {state === 'IDLE' && 'TALA • Ready'}
+          {state === 'LISTENING' && 'TALA • Listening'}
+          {state === 'PROCESSING' && 'TALA • Thinking'}
+          {state === 'SPEAKING' && 'TALA • Speaking'}
+          {state === 'ERROR' && 'TALA • System Alert'}
         </div>
       </div>
 

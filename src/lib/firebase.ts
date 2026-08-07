@@ -121,7 +121,6 @@ export async function saveUserSettings(userId: string, settings: Partial<TalaSet
     // Exclude API keys from cloud save for security
     const safeSettings = { ...settings };
     delete safeSettings.openrouterApiKey;
-    delete safeSettings.googleApiKey;
     delete safeSettings.customApiKey;
 
     await setDoc(doc(db, path), {

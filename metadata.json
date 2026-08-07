@@ -1,6 +1,6 @@
 {
-  "name": "TALA Voice Assistant",
-  "description": "Futuristic sci-fi voice assistant with an interactive Arc-Reactor HUD, Web Speech input/output, and Gemini AI backend.",
+  "name": "TALA AI Concierge",
+  "description": "AI concierge for BAIA with interactive voice capabilities, Web Speech input/output, and OpenRouter AI engine.",
   "requestFramePermissions": [
     "microphone"
   ],
