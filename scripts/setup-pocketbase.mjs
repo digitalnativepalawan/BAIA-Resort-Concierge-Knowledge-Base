@@ -538,9 +538,9 @@ async function setup() {
       voice_pitch: 1.05,
       voice_rate: 1.05,
       knowledge_enabled: true,
-      knowledge_categories: ['Property', 'Rooms', 'Food & Breakfast', 'Transportation', 'Activities', 'San Vicente', 'Policies', 'Emergency'],
-      skills: [],
-      permissions: ['chat', 'voice', 'knowledge'],
+      knowledge_categories: ['resort_info', 'facilities', 'dining', 'activities', 'booking', 'policies', 'local_area', 'sustainability', 'general'],
+      skills: ['knowledge_search', 'conversation_management'],
+      permissions: ['read_knowledge', 'manage_conversations', 'view_guest_data', 'access_system'],
       status: 'online',
       guest_facing: true
     });

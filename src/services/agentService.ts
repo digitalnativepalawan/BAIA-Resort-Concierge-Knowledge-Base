@@ -19,7 +19,7 @@ export interface Agent {
   knowledge_categories: string[];
   skills: any[];
   permissions: string[];
-  status: 'online' | 'offline' | 'disabled';
+  status: 'active' | 'inactive' | 'maintenance' | 'online' | 'offline' | 'disabled';
   guest_facing: boolean;
 }
 
@@ -81,6 +81,18 @@ export const agentService = {
     }
   },
 
+  getAgentBySlug: async (slug: string): Promise<Agent | null> => {
+    try {
+      const records = await pb.collection('agents').getFullList({
+        filter: `slug = "${slug}"`,
+      });
+      return records[0] ? pbRecordToAgent(records[0]) : null;
+    } catch (err) {
+      console.warn('PocketBase: Failed to get agent by slug:', err);
+      return null;
+    }
+  },
+
   createAgent: async (agent: Partial<Agent>): Promise<Agent | null> => {
     try {
       const record = await pb.collection('agents').create({
@@ -121,7 +133,7 @@ export const agentService = {
     }
   },
 
-  setAgentStatus: async (id: string, status: Agent['status']): Promise<boolean> => {
+  setAgentStatus: async (id: string, status: string): Promise<boolean> => {
     try {
       await pb.collection('agents').update(id, { status });
       return true;
@@ -129,5 +141,46 @@ export const agentService = {
       console.warn('PocketBase: Failed to set agent status:', err);
       return false;
     }
+  },
+
+  deleteAgent: async (id: string): Promise<boolean> => {
+    try {
+      await pb.collection('agents').delete(id);
+      return true;
+    } catch (err) {
+      console.warn('PocketBase: Failed to delete agent:', err);
+      return false;
+    }
+  },
+
+  subscribeAgents: (callback: (agents: Agent[]) => void): (() => void) => {
+    let unsubscribed = false;
+    let unsubscribeFn: (() => void) | null = null;
+
+    pb.collection('agents').subscribe('*', () => {
+      if (!unsubscribed) {
+        agentService.getAgents().then(callback);
+      }
+    }).then(( unsub) => {
+      unsubscribeFn = unsub;
+    }).catch(() => {});
+
+    return () => {
+      unsubscribed = true;
+      if (unsubscribeFn) {
+        try { unsubscribeFn(); } catch { /* ignore */ }
+      }
+    };
   }
 };
+
+// Named exports for direct use
+export const getAgents = agentService.getAgents;
+export const getAgent = agentService.getAgent;
+export const getAgentBySlug = agentService.getAgentBySlug;
+export const getDefaultGuestAgent = agentService.getDefaultGuestAgent;
+export const createAgent = agentService.createAgent;
+export const updateAgent = agentService.updateAgent;
+export const deleteAgent = agentService.deleteAgent;
+export const setAgentStatus = agentService.setAgentStatus;
+export const subscribeAgents = agentService.subscribeAgents;

@@ -688,6 +688,152 @@ async function run() {
   }
 
   // ============================================================
+  // AGENT ARCHITECTURE VERIFICATION
+  // ============================================================
+  console.log('\n--- Agent Architecture ---');
+
+  // Verify agent fields for skills, permissions, knowledge, model, voice
+  try {
+    const tala = await pb.collection('agents').getFirstListItem('slug="tala-concierge"');
+    const fieldNames = (await pb.collections.getOne('agents')).fields.map(f => f.name);
+
+    // Skills field
+    if (fieldNames.includes('skills')) {
+      pass('Agent field "skills" exists');
+      const hasSkills = Array.isArray(tala.skills) && tala.skills.length > 0;
+      if (hasSkills) {
+        pass(`Agent has ${tala.skills.length} skill(s) assigned`);
+      } else {
+        fail('Agent skills', `skills=${JSON.stringify(tala.skills)}`);
+      }
+    } else {
+      fail('Agent field "skills"', 'missing from collection');
+    }
+
+    // Permissions field
+    if (fieldNames.includes('permissions')) {
+      pass('Agent field "permissions" exists');
+      const hasPerms = Array.isArray(tala.permissions) && tala.permissions.length > 0;
+      if (hasPerms) {
+        pass(`Agent has ${tala.permissions.length} permission(s) assigned`);
+      } else {
+        fail('Agent permissions', `permissions=${JSON.stringify(tala.permissions)}`);
+      }
+    } else {
+      fail('Agent field "permissions"', 'missing from collection');
+    }
+
+    // Knowledge categories field
+    if (fieldNames.includes('knowledge_categories')) {
+      pass('Agent field "knowledge_categories" exists');
+    } else {
+      fail('Agent field "knowledge_categories"', 'missing from collection');
+    }
+
+    // Model ID field
+    if (fieldNames.includes('model_id')) {
+      pass('Agent field "model_id" exists');
+      if (tala.model_id) {
+        pass(`Agent model_id: ${tala.model_id}`);
+      } else {
+        fail('Agent model_id', 'empty');
+      }
+    } else {
+      fail('Agent field "model_id"', 'missing from collection');
+    }
+
+    // Voice fields
+    for (const vField of ['voice_enabled', 'voice_rate', 'voice_name']) {
+      if (fieldNames.includes(vField)) {
+        pass(`Agent field "${vField}" exists`);
+      } else {
+        fail(`Agent field "${vField}"`, 'missing from collection');
+      }
+    }
+
+    // Guest-facing flag
+    if (fieldNames.includes('guest_facing')) {
+      pass('Agent field "guest_facing" exists');
+      if (tala.guest_facing === true) {
+        pass('TALA is guest-facing');
+      } else {
+        fail('TALA guest_facing', `expected true, got ${tala.guest_facing}`);
+      }
+    } else {
+      fail('Agent field "guest_facing"', 'missing from collection');
+    }
+
+  } catch (err) {
+    fail('Agent architecture check', err.message);
+  }
+
+  // Verify agent test endpoint exists
+  try {
+    const resp = await fetch(`${APP_URL}/api/agents/tala-concierge/test`);
+    const data = await resp.json();
+    if (resp.ok && data.ok !== undefined && data.agent) {
+      pass('Agent test endpoint responds');
+      if (data.agent.slug === 'tala-concierge') {
+        pass('Agent test endpoint returns correct agent');
+      } else {
+        fail('Agent test endpoint', `slug=${data.agent.slug}`);
+      }
+      if (data.agent.skills && data.agent.skills.length > 0) {
+        pass('Agent test endpoint reports skills');
+      } else {
+        fail('Agent test endpoint skills', `skills=${JSON.stringify(data.agent.skills)}`);
+      }
+      if (data.agent.permissions && data.agent.permissions.length > 0) {
+        pass('Agent test endpoint reports permissions');
+      } else {
+        fail('Agent test endpoint permissions', `permissions=${JSON.stringify(data.agent.permissions)}`);
+      }
+    } else {
+      fail('Agent test endpoint', `status=${resp.status} ok=${data.ok}`);
+    }
+  } catch (err) {
+    fail('Agent test endpoint', err.message);
+  }
+
+  // Verify non-existent agent returns 404
+  try {
+    const resp = await fetch(`${APP_URL}/api/agents/nonexistent-agent/test`);
+    if (resp.status === 404) {
+      pass('Agent test endpoint returns 404 for unknown slug');
+    } else {
+      const data = await resp.json();
+      fail('Agent test 404', `status=${resp.status} error=${data.error}`);
+    }
+  } catch (err) {
+    fail('Agent test 404', err.message);
+  }
+
+  // Verify agent chat with agentSlug parameter
+  if (OPENROUTER_API_KEY) {
+    try {
+      const resp = await fetch(`${APP_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentSlug: 'tala-concierge',
+          prompt: 'Reply with exactly: ARCH_TEST_OK',
+          history: []
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.responseText) {
+        pass('Chat with agentSlug parameter works');
+      } else {
+        fail('Chat with agentSlug', `status=${resp.status} ${JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      fail('Chat with agentSlug', err.message);
+    }
+  } else {
+    block('Chat with agentSlug', 'OPENROUTER_API_KEY not set');
+  }
+
+  // ============================================================
   // KNOWLEDGE PRIVACY
   // ============================================================
   console.log('\n--- Knowledge Privacy ---');

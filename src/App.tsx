@@ -26,6 +26,7 @@ import { AdminConversationsPage } from './pages/admin/AdminConversationsPage';
 import { AdminKnowledgePage } from './pages/admin/AdminKnowledgePage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+import { AdminAgentsPage } from './pages/admin/AdminAgentsPage';
 
 import { soundEffects } from './utils/soundEffects';
 import { cleanTextForSpeech } from './utils/textUtils';
@@ -686,6 +687,12 @@ export default function App() {
                 onDeleteRequest={handleDeleteRequest}
               />
             }
+          />
+
+          {/* Admin Agents Management */}
+          <Route
+            path="agents"
+            element={<AdminAgentsPage />}
           />
 
           {/* Admin Settings & Diagnostics */}

@@ -109,8 +109,30 @@ async function ensureServerAuth(): Promise<boolean> {
   }
 }
 
-// Server-side knowledge grounding: fetch active knowledge docs from PocketBase
-async function getGroundedKnowledgeBase(): Promise<string> {
+// ── Agent helpers: resolve agent profiles from PocketBase ───────────────────
+async function fetchAgentBySlug(slug: string): Promise<any | null> {
+  try {
+    const records = await pb.collection('agents').getFullList({
+      filter: `slug = "${slug}"`,
+    });
+    return records[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAgentById(id: string): Promise<any | null> {
+  try {
+    return await pb.collection('agents').getOne(id);
+  } catch {
+    return null;
+  }
+}
+
+// ── Knowledge grounding: fetch active knowledge docs from PocketBase ────────
+async function getGroundedKnowledgeBase(
+  categories?: string[]
+): Promise<string> {
   try {
     const authenticated = await ensureServerAuth();
     if (!authenticated) {
@@ -118,8 +140,13 @@ async function getGroundedKnowledgeBase(): Promise<string> {
       return '';
     }
 
+    let filter = 'active=true';
+    if (categories && categories.length > 0) {
+      const categoryFilter = categories.map((c) => `category="${c}"`).join(' || ');
+      filter = `active=true && (${categoryFilter})`;
+    }
     const records = await pb.collection('knowledge_documents').getFullList(200, {
-      filter: 'active=true',
+      filter,
       sort: '-id'
     });
 
@@ -352,7 +379,7 @@ async function startServer() {
   // TALA Voice Assistant Chat Endpoint (OpenRouter Gateway)
   app.post('/api/chat', async (req, res) => {
     try {
-      const { model, prompt, history, systemInstruction, conversation_id, session_token } = req.body;
+      const { model, prompt, history, systemInstruction, conversation_id, session_token, agentSlug } = req.body;
 
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: 'Prompt is required' });
@@ -368,16 +395,32 @@ async function startServer() {
         });
       }
 
-      const activeSystemInstruction = systemInstruction && systemInstruction.trim()
-        ? systemInstruction
-        : DEFAULT_SYSTEM_INSTRUCTION;
+      // ── Resolve agent profile from DB (trust DB, not client) ──────────
+      let agentProfile: any = null;
+      let activeSystemInstruction = DEFAULT_SYSTEM_INSTRUCTION;
+      let agentModelId: string | null = null;
+
+      if (agentSlug) {
+        agentProfile = await fetchAgentBySlug(agentSlug);
+        if (agentProfile) {
+          activeSystemInstruction = agentProfile.system_prompt || DEFAULT_SYSTEM_INSTRUCTION;
+          agentModelId = agentProfile.model_id || null;
+        }
+      }
+
+      // Fallback: if no agent resolved, use systemInstruction from client
+      if (!agentProfile && systemInstruction && systemInstruction.trim()) {
+        activeSystemInstruction = systemInstruction;
+      }
 
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: activeSystemInstruction }
       ];
 
       // Server-side knowledge grounding: append knowledge base docs to system instruction
-      const knowledgeBase = await getGroundedKnowledgeBase();
+      // Filter by agent knowledge categories if available
+      const knowledgeCategories = agentProfile?.knowledge_categories || [];
+      const knowledgeBase = await getGroundedKnowledgeBase(knowledgeCategories);
       if (knowledgeBase) {
         messages[0].content += knowledgeBase;
       }
@@ -395,7 +438,7 @@ async function startServer() {
 
       messages.push({ role: 'user', content: prompt });
 
-      const targetModel = model || 'openrouter/free';
+      const targetModel = agentModelId || model || 'openrouter/free';
 
       console.log(`[TALA OPENROUTER] Dispatching payload to model '${targetModel}'...`);
 
@@ -456,7 +499,7 @@ async function startServer() {
                 conversation: conversation_id,
                 role: 'assistant',
                 content: responseText,
-                agent_id: 'tala-concierge'
+                agent_id: agentProfile?.slug || 'tala-concierge'
               });
             }
           }
@@ -477,6 +520,51 @@ async function startServer() {
       return res.status(500).json({
         error: 'TALA is temporarily unavailable. Please contact resort staff.'
       });
+    }
+  });
+
+  // ── Agent Test Endpoint ────────────────────────────────────────────────
+  app.get('/api/agents/:slug/test', async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const agent = await fetchAgentBySlug(slug);
+
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+
+      // Basic validation
+      const issues: string[] = [];
+      if (agent.status !== 'active') {
+        issues.push(`Agent status is '${agent.status}', expected 'active'`);
+      }
+      if (!agent.system_prompt || agent.system_prompt.trim().length === 0) {
+        issues.push('No system prompt configured');
+      }
+      if (!agent.model_id) {
+        issues.push('No model configured');
+      }
+
+      const apiKey = (process.env.OPENROUTER_API_KEY || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+
+      return res.json({
+        ok: issues.length === 0,
+        agent: {
+          id: agent.id,
+          slug: agent.slug,
+          name: agent.name,
+          status: agent.status,
+          model_id: agent.model_id,
+          has_system_prompt: Boolean(agent.system_prompt),
+          skills: agent.skills || [],
+          permissions: agent.permissions || [],
+        },
+        issues,
+        apiKeyConfigured: Boolean(apiKey),
+      });
+    } catch (err: any) {
+      console.error('[AGENT TEST ERROR]', err);
+      return res.status(500).json({ error: 'Agent test failed' });
     }
   });
 
