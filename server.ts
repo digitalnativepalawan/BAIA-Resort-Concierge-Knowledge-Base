@@ -277,6 +277,80 @@ async function startServer() {
     }
   });
 
+  // TALA High-Quality Neural Female TTS Endpoint
+  app.get('/api/tts', async (req, res) => {
+    try {
+      const text = (req.query.text as string || '').trim();
+      const voice = (req.query.voice as string || 'tala-female-neural-us').toLowerCase();
+
+      if (!text) {
+        return res.status(400).json({ error: 'Text query parameter is required' });
+      }
+
+      // Sanitize text: strip control chars and collapse whitespace
+      const sanitizedText = text.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').slice(0, 300).trim();
+
+      if (!sanitizedText) {
+        return res.status(400).json({ error: 'Valid text content is required' });
+      }
+
+      let targetLang = 'en';
+      if (voice.includes('uk') || voice.includes('gb') || voice.includes('british')) {
+        targetLang = 'en-gb';
+      } else if (voice.includes('au') || voice.includes('australian')) {
+        targetLang = 'en-au';
+      } else if (voice.includes('in') || voice.includes('indian')) {
+        targetLang = 'en-in';
+      } else {
+        targetLang = 'en';
+      }
+
+      const clientCandidates = [
+        `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(sanitizedText)}&tl=${targetLang}&total=1&idx=0&textlen=${sanitizedText.length}&client=tw-ob`,
+        `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(sanitizedText)}&tl=${targetLang}&client=gtx`,
+        `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(sanitizedText)}&tl=${targetLang}&client=dict-chrome-ex`
+      ];
+
+      let ttsResponse: Response | null = null;
+
+      for (const ttsUrl of clientCandidates) {
+        try {
+          const resp = await fetch(ttsUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8'
+            }
+          });
+          if (resp.ok) {
+            ttsResponse = resp;
+            break;
+          }
+        } catch (e) {
+          // Ignore and retry candidate
+        }
+      }
+
+      if (!ttsResponse || !ttsResponse.ok) {
+        console.warn(`[TALA TTS NOTICE] Cloud TTS provider unavailable (status ${ttsResponse?.status || 'network_error'}), triggering WebSpeech fallback.`);
+        return res.status(503).json({ error: 'Cloud TTS audio stream unavailable, switching to local WebSpeech synthesis.' });
+      }
+
+      const arrayBuffer = await ttsResponse.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': buffer.length.toString(),
+        'Cache-Control': 'public, max-age=86400'
+      });
+
+      return res.send(buffer);
+    } catch (err: any) {
+      console.warn('[TALA TTS NOTICE]', err.message);
+      return res.status(503).json({ error: 'Failed to synthesize neural audio stream, falling back to client engine' });
+    }
+  });
+
   // Vite middleware for development / static server for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

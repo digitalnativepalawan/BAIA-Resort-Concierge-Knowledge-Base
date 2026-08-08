@@ -19,7 +19,8 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  Trash2
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 
 interface AdminSettingsPageProps {
@@ -190,13 +191,23 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onTestVoice}
-            className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-medium transition-all flex items-center gap-1.5"
-          >
-            <Play className="w-3.5 h-3.5 fill-[#00f0ff]" />
-            <span>Test Voice</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onUpdateSettings({ pitch: 1.0, rate: 1.0 })}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-all flex items-center gap-1.5"
+              title="Reset Pitch (1.0) & Speed Rate (1.0) to natural human conversational baseline"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Natural Pitch/Speed (1.0)</span>
+            </button>
+            <button
+              onClick={onTestVoice}
+              className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-medium transition-all flex items-center gap-1.5"
+            >
+              <Play className="w-3.5 h-3.5 fill-[#00f0ff]" />
+              <span>Test Voice</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -211,10 +222,11 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
               </label>
 
               {(() => {
-                const naturalFemale = availableVoices.filter((v) => v.isNatural && v.gender === 'female');
-                const standardFemale = availableVoices.filter((v) => !v.isNatural && v.gender === 'female');
-                const maleVoices = availableVoices.filter((v) => v.gender === 'male');
-                const otherVoices = availableVoices.filter((v) => v.gender === 'unknown');
+                const cloudVoices = availableVoices.filter((v) => v.voiceURI?.startsWith('cloud-') || v.name.startsWith('TALA -'));
+                const naturalFemale = availableVoices.filter((v) => !v.voiceURI?.startsWith('cloud-') && !v.name.startsWith('TALA -') && v.isNatural && v.gender === 'female');
+                const standardFemale = availableVoices.filter((v) => !v.voiceURI?.startsWith('cloud-') && !v.name.startsWith('TALA -') && !v.isNatural && v.gender === 'female');
+                const maleVoices = availableVoices.filter((v) => !v.voiceURI?.startsWith('cloud-') && !v.name.startsWith('TALA -') && v.gender === 'male');
+                const otherVoices = availableVoices.filter((v) => !v.voiceURI?.startsWith('cloud-') && !v.name.startsWith('TALA -') && v.gender === 'unknown');
 
                 const selectedVoice = availableVoices.find((v) => v.name === settings.selectedVoiceName);
 
@@ -229,8 +241,17 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                         <option value="">Default System Voice</option>
                       ) : (
                         <>
+                          {cloudVoices.length > 0 && (
+                            <optgroup label="🌟 TALA Cloud Natural Female Voices (Universal)">
+                              {cloudVoices.map((v) => (
+                                <option key={v.name} value={v.name}>
+                                  {v.name} ({v.lang})
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                           {naturalFemale.length > 0 && (
-                            <optgroup label="Natural & Neural Female Voices">
+                            <optgroup label="Natural & Neural Female Voices (Browser)">
                               {naturalFemale.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -239,7 +260,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                             </optgroup>
                           )}
                           {standardFemale.length > 0 && (
-                            <optgroup label="Standard Female Voices">
+                            <optgroup label="Standard Female Voices (Browser)">
                               {standardFemale.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -248,7 +269,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                             </optgroup>
                           )}
                           {maleVoices.length > 0 && (
-                            <optgroup label="Male Voices">
+                            <optgroup label="Male Voices (Browser)">
                               {maleVoices.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -257,7 +278,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                             </optgroup>
                           )}
                           {otherVoices.length > 0 && (
-                            <optgroup label="Other System Voices">
+                            <optgroup label="Other Voices">
                               {otherVoices.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})

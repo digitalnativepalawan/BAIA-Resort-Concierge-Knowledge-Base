@@ -19,6 +19,12 @@ import { conversationService } from './services/conversationService';
 import { knowledgeService } from './services/knowledgeService';
 import { settingsService } from './services/settingsService';
 import { requestService } from './services/requestService';
+import {
+  isFemaleVoiceName,
+  isNaturalVoiceName,
+  getBestFemaleVoice,
+  speechEngine
+} from './lib/speechEngine';
 
 import { GuestConcierge } from './pages/GuestConcierge';
 import { AdminLayout } from './components/admin/AdminLayout';
@@ -86,8 +92,8 @@ export default function App() {
     }
 
     return {
-      pitch: 1.05,
-      rate: 1.05,
+      pitch: 1.0,
+      rate: 1.0,
       selectedVoiceName: '',
       openrouterApiKey: openrouterKey,
       selectedOpenRouterModel: selectedOpenRouterModel,
@@ -240,82 +246,19 @@ export default function App() {
       });
   }, [addLog]);
 
-  // Web Speech Voices Initializer
+  // Web & Cloud Speech Voices Initializer
   useEffect(() => {
     const populateVoices = () => {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-      const rawVoices = window.speechSynthesis.getVoices();
-      if (rawVoices.length === 0) return;
+      const available = speechEngine.getAvailableVoices();
+      setVoices(available);
 
-      const femaleKeywords = [
-        'female', 'woman', 'girl', 'jenny', 'aria', 'samantha', 'zira', 'victoria', 
-        'karen', 'eva', 'monica', 'serena', 'siri', 'ana', 'clara', 'emma', 'sonia', 
-        'ava', 'michelle', 'moira', 'fiona', 'veena', 'susan', 'allison', 'nora', 
-        'chloe', 'zoey', 'emily', 'olivia', 'sophia', 'isabella', 'charlotte', 'mia', 
-        'amelia', 'harper', 'evelyn', 'abigail', 'ella', 'kyoko', 'yuri', 'sin-ji', 
-        'meijia', 'tingting', 'huihui', 'yaoyao', 'kanya', 'laila', 'zhiyu'
-      ];
-
-      const maleKeywords = [
-        'male', 'man', 'boy', 'david', 'mark', 'george', 'guy', 'jason', 'stefan', 
-        'paul', 'christopher', 'brian', 'eric', 'andrew', 'james', 'john', 'michael', 
-        'robert', 'william', 'richard', 'joseph', 'thomas', 'charles', 'daniel', 
-        'matthew', 'anthony', 'donald', 'steven', 'kenneth', 'joshua', 'kevin', 
-        'edward', 'ronald', 'timothy', 'jeffrey', 'ryan', 'jacob', 'gary', 'nicholas', 
-        'jonathan', 'stephen', 'scott', 'brandon', 'benjamin', 'samuel', 'gregory', 
-        'alexander', 'frank', 'patrick', 'raymond', 'jack', 'dennis', 'jerry', 
-        'tyler', 'aaron', 'adam', 'nathan', 'henry', 'douglas', 'zachary', 'peter'
-      ];
-
-      const naturalKeywords = ['natural', 'online', 'neural', 'wavenet', 'enhanced', 'premium', 'studio', 'deep'];
-
-      const formatted: VoiceOption[] = rawVoices.map((v) => {
-        const lowerName = v.name.toLowerCase();
-        const hasFemaleKeyword = femaleKeywords.some((k) => lowerName.includes(k));
-        const hasMaleKeyword = maleKeywords.some((k) => lowerName.includes(k));
-        const isNatural = naturalKeywords.some((k) => lowerName.includes(k));
-
-        let gender: 'female' | 'male' | 'unknown' = 'unknown';
-        if (hasFemaleKeyword && !hasMaleKeyword) {
-          gender = 'female';
-        } else if (hasMaleKeyword && !hasFemaleKeyword) {
-          gender = 'male';
-        } else if (hasFemaleKeyword) {
-          gender = 'female';
-        }
-
-        return {
-          name: v.name,
-          lang: v.lang,
-          default: v.default,
-          voiceURI: v.voiceURI,
-          gender,
-          isNatural
-        };
-      });
-
-      // Sort natural female voices first, then standard female voices, then natural others, then rest
-      formatted.sort((a, b) => {
-        const aScore = (a.gender === 'female' ? 10 : 0) + (a.isNatural ? 5 : 0);
-        const bScore = (b.gender === 'female' ? 10 : 0) + (b.isNatural ? 5 : 0);
-        return bScore - aScore;
-      });
-
-      setVoices(formatted);
-
-      // Keep user's chosen voice if valid; only auto-select if empty or voice no longer exists
       setSettings((prev) => {
-        if (prev.selectedVoiceName && formatted.some((v) => v.name === prev.selectedVoiceName)) {
+        // Never reset an existing user-selected voice
+        if (prev.selectedVoiceName) {
           return prev;
         }
-        const bestFemale =
-          formatted.find((v) => v.isNatural && v.gender === 'female') ||
-          formatted.find((v) => v.gender === 'female') ||
-          formatted[0];
-        if (bestFemale) {
-          return { ...prev, selectedVoiceName: bestFemale.name };
-        }
-        return prev;
+        const defaultVoice = available[0]?.name || 'TALA - Natural Neural Female (US)';
+        return { ...prev, selectedVoiceName: defaultVoice, pitch: 1.0, rate: 1.0 };
       });
     };
 
@@ -334,82 +277,39 @@ export default function App() {
   // Speech Synthesis
   const speakText = useCallback(
     (text: string) => {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
       const cleanedText = cleanTextForSpeech(text);
       if (!cleanedText) return;
 
-      try {
-        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-          window.speechSynthesis.cancel();
-        }
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
-        }
-      } catch (e) {}
+      setState('SPEAKING');
+      setSpeechVolume(0.8);
+      addLog('[ VOCALIZING ]: TALA speech output active', 'speaking');
 
-      const utterance = new SpeechSynthesisUtterance(cleanedText);
-      currentUtteranceRef.current = utterance;
+      const selectedVoice = settings.selectedVoiceName || 'TALA - Natural Neural Female (US)';
+      const pitch = settings.pitch || 1.0;
+      const rate = settings.rate || 1.0;
 
-      utterance.pitch = settings.pitch || 1.05;
-      utterance.rate = settings.rate || 1.05;
-
-      if (settings.selectedVoiceName) {
-        const selected = window.speechSynthesis
-          .getVoices()
-          .find((v) => v.name === settings.selectedVoiceName);
-        if (selected) utterance.voice = selected;
-      }
-
-      utterance.onstart = () => {
-        setState('SPEAKING');
-        setSpeechVolume(0.8);
-        addLog('[ VOCALIZING ]: TALA speech output active', 'speaking');
-      };
-
-      utterance.onboundary = () => {
-        setSpeechVolume(0.4 + Math.random() * 0.6);
-      };
-
-      utterance.onend = () => {
-        setState('IDLE');
-        setSpeechVolume(0.2);
-
-        if (settings.continuousListening && startListeningRef.current) {
-          setTimeout(() => {
-            startListeningRef.current?.();
-          }, 400);
-        }
-      };
-
-      utterance.onerror = (e: any) => {
-        const errType = e?.error || 'interrupted';
-        setState('IDLE');
-        setSpeechVolume(0.2);
-        if (errType !== 'canceled' && errType !== 'interrupted') {
-          addLog(`[ VOCALIZATION NOTICE ]: ${errType}`, 'info');
-        }
-      };
-
-      setTimeout(() => {
-        try {
-          if ('speechSynthesis' in window) {
-            window.speechSynthesis.resume();
-            window.speechSynthesis.speak(utterance);
-          }
-        } catch (e) {
+      speechEngine.speakText(
+        cleanedText,
+        selectedVoice,
+        pitch,
+        rate,
+        () => {
           setState('IDLE');
           setSpeechVolume(0.2);
+
+          if (settings.continuousListening && startListeningRef.current) {
+            setTimeout(() => {
+              startListeningRef.current?.();
+            }, 400);
+          }
         }
-      }, 30);
+      );
     },
-    [settings, addLog]
+    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog]
   );
 
   const stopSpeech = useCallback(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    speechEngine.stopSpeech();
     setState('IDLE');
     setSpeechVolume(0.2);
   }, []);
@@ -649,6 +549,22 @@ export default function App() {
     addLog(`Updated request ${id} status to ${status}`, 'info');
   }, [addLog]);
 
+  const handleUpdateSettings = useCallback((newPartial: Partial<TalaSettings>) => {
+    if (newPartial.selectedVoiceName) {
+      speechEngine.logAndValidateVoiceSelection(newPartial.selectedVoiceName, 'voice-profile-change');
+    }
+    setSettings((prev) => {
+      const updated = { ...prev, ...newPartial };
+      try {
+        localStorage.setItem('tala_settings', JSON.stringify(updated));
+        settingsService.saveSettings(updated);
+      } catch (e) {
+        console.warn('Failed to save settings:', e);
+      }
+      return updated;
+    });
+  }, []);
+
   const handleDeleteRequest = useCallback(async (id: string) => {
     const updated = await requestService.deleteRequest(id);
     setGuestRequests(updated);
@@ -750,7 +666,7 @@ export default function App() {
             element={
               <AdminSettingsPage
                 settings={settings}
-                onUpdateSettings={(newPartial) => setSettings((prev) => ({ ...prev, ...newPartial }))}
+                onUpdateSettings={handleUpdateSettings}
                 availableVoices={voices}
                 onTestVoice={handleTestVoiceDiagnostic}
                 logs={logs}
