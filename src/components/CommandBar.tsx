@@ -63,21 +63,27 @@ export const CommandBar: React.FC<CommandBarProps> = ({
 
       {/* Primary Input Bar */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2.5">
-        {/* Voice Trigger Button */}
+        {/* Voice Trigger Button with Wake Up TALA Label */}
         <button
           type="button"
           onClick={onMicToggle}
-          title={isListening ? "Stop Listening" : "Start Voice Input"}
-          className={`relative p-2.5 rounded-xl border flex items-center justify-center transition-all shrink-0 ${
+          title={isListening ? "Stop Listening" : "Wake Up TALA"}
+          className={`relative px-3 py-2.5 rounded-xl border flex items-center gap-2 transition-all shrink-0 font-medium text-xs ${
             isListening
               ? 'bg-[#ff007f] border-[#ff007f] text-white shadow-[0_0_15px_rgba(255,0,127,0.5)] animate-pulse'
-              : 'bg-[#0d1b2b]/70 border-[#00f0ff]/30 text-[#00f0ff] hover:border-[#00f0ff]/60 hover:bg-[#00f0ff]/10'
+              : 'bg-[#00f0ff]/15 border-[#00f0ff]/50 text-[#00f0ff] hover:bg-[#00f0ff]/25 hover:border-[#00f0ff] shadow-[0_0_12px_rgba(0,240,255,0.2)]'
           }`}
         >
           {isListening ? (
-            <MicOff className="w-4 h-4 animate-bounce" />
+            <>
+              <MicOff className="w-4 h-4 animate-bounce text-white" />
+              <span>Listening...</span>
+            </>
           ) : (
-            <Mic className="w-4 h-4" />
+            <>
+              <Mic className="w-4 h-4 text-[#00f0ff] animate-pulse" />
+              <span className="font-semibold text-white tracking-wide">Wake up TALA</span>
+            </>
           )}
         </button>
 
@@ -120,24 +126,25 @@ export const CommandBar: React.FC<CommandBarProps> = ({
         </button>
       </form>
 
-      {/* Auto-Listen & Continuous Mode Toggle */}
+      {/* Hands-Free Voice Status */}
       <div className="flex items-center justify-between px-1 text-[11px] font-inter font-normal text-gray-400">
-        <label className="flex items-center gap-2 cursor-pointer select-none group">
-          <input
-            type="checkbox"
-            checked={continuousListening}
-            onChange={onToggleContinuousListening}
-            className="w-3.5 h-3.5 rounded border-[#00f0ff]/40 text-[#00f0ff] focus:ring-0 bg-[#050811] cursor-pointer"
-          />
-          <span className="group-hover:text-cyan-200 transition-colors flex items-center gap-1.5">
-            <span>Auto-Listen Loop (Hands-Free Voice)</span>
-            {continuousListening && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/30 font-medium animate-pulse">
-                Active
-              </span>
-            )}
+        <button
+          type="button"
+          onClick={onToggleContinuousListening}
+          className="flex items-center gap-2 hover:text-cyan-200 transition-colors select-none group focus:outline-none"
+        >
+          <span className={`w-2 h-2 rounded-full ${continuousListening ? 'bg-[#00f0ff] animate-ping' : 'bg-gray-500'}`} />
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className={continuousListening ? 'text-cyan-100' : 'text-gray-400'}>Hands-Free Voice Conversation</span>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-medium ${
+              continuousListening
+                ? 'bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/30'
+                : 'bg-gray-800 text-gray-400 border border-gray-700'
+            }`}>
+              {continuousListening ? 'ACTIVE' : 'PAUSED (CLICK TO ENABLE)'}
+            </span>
           </span>
-        </label>
+        </button>
         <span className="text-gray-400/80 font-light hidden sm:inline">Voice Engine: Web Speech API</span>
       </div>
     </div>

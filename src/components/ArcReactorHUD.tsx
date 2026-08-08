@@ -324,7 +324,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
             {/* Core Symbol / State Display */}
             <div className="flex flex-col items-center justify-center text-center p-2 z-30">
               <span className="text-[10px] font-inter tracking-wider text-[#00f0ff] opacity-90 mb-0.5 font-medium">
-                {state === 'IDLE' && 'Ready'}
+                {state === 'IDLE' && 'Standby'}
                 {state === 'LISTENING' && 'Listening...'}
                 {state === 'PROCESSING' && 'Thinking...'}
                 {state === 'SPEAKING' && 'Speaking...'}
@@ -345,25 +345,50 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
                   </div>
                 ) : (
                   <div className="w-6 h-6 rounded-full border border-[#00f0ff] flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <div className="w-2 h-2 rounded-full bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#00f0ff] shadow-[0_0_10px_#00f0ff] animate-pulse" />
                   </div>
                 )}
               </div>
 
-              <span className="text-[10px] font-inter font-medium text-[#00f0ff]/90 group-hover:text-[#00f0ff] tracking-wide">
-                {state === 'LISTENING' ? 'Speak Now' : 'Talk to TALA'}
+              <span className="text-[11px] font-inter font-bold text-[#00f0ff] group-hover:text-white tracking-wide uppercase">
+                {state === 'LISTENING' ? 'Speak Now' : 'Wake up TALA'}
               </span>
             </div>
           </div>
         </button>
 
         {/* Orbiting HUD Status Tags */}
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-[#0d1b2b]/80 border border-[#00f0ff]/25 backdrop-blur-md shadow-sm text-xs font-inter text-cyan-200 font-medium tracking-wide whitespace-nowrap">
-          {state === 'IDLE' && 'TALA • Ready'}
-          {state === 'LISTENING' && 'TALA • Listening'}
-          {state === 'PROCESSING' && 'TALA • Thinking'}
-          {state === 'SPEAKING' && 'TALA • Speaking'}
-          {state === 'ERROR' && 'TALA • System Alert'}
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-[#0d1b2b]/90 border border-[#00f0ff]/40 backdrop-blur-md shadow-lg text-xs font-inter text-cyan-200 font-semibold tracking-wide whitespace-nowrap flex items-center gap-2">
+          {state === 'IDLE' && (
+            <>
+              <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-ping" />
+              <span>Wake up TALA • Ready</span>
+            </>
+          )}
+          {state === 'LISTENING' && (
+            <>
+              <span className="w-2 h-2 rounded-full bg-[#ff007f] animate-ping" />
+              <span>TALA Listening...</span>
+            </>
+          )}
+          {state === 'PROCESSING' && (
+            <>
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-spin" />
+              <span>TALA Thinking...</span>
+            </>
+          )}
+          {state === 'SPEAKING' && (
+            <>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" />
+              <span>TALA Speaking...</span>
+            </>
+          )}
+          {state === 'ERROR' && (
+            <>
+              <span className="w-2 h-2 rounded-full bg-rose-500" />
+              <span>TALA System Alert</span>
+            </>
+          )}
         </div>
       </div>
 

@@ -103,7 +103,7 @@ export default function App() {
       systemInstruction: DEFAULT_SYSTEM_INSTRUCTION,
       autoSpeak: true,
       soundEnabled: true,
-      continuousListening: false,
+      continuousListening: true,
       useHybridNeural: true,
     };
   });
@@ -112,6 +112,7 @@ export default function App() {
   const recognitionRef = useRef<any>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const startListeningRef = useRef<(() => void) | null>(null);
+  const silenceCountRef = useRef<number>(0);
 
   // Persist knowledge files
   useEffect(() => {
@@ -286,10 +287,19 @@ export default function App() {
         () => {
           setState('IDLE');
           setSpeechVolume(0.2);
+
+          // Resume hands-free voice loop if enabled
+          if (settings.continuousListening) {
+            setTimeout(() => {
+              if (startListeningRef.current) {
+                startListeningRef.current();
+              }
+            }, 600);
+          }
         }
       );
     },
-    [settings.selectedVoiceName, settings.pitch, settings.rate, addLog]
+    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog]
   );
 
   const stopSpeech = useCallback(() => {
@@ -448,13 +458,39 @@ export default function App() {
         if (currentInterim) setInterimTranscript(currentInterim);
 
         if (finalScript) {
+          silenceCountRef.current = 0;
           setInterimTranscript('');
           addLog(`[ SPEECH DETECTED ]: "${finalScript}"`, 'success');
           try {
             recognition.stop();
           } catch (e) {}
           recognitionRef.current = null;
-          sendPromptToTala(finalScript);
+
+          // Wake phrase check
+          const lower = finalScript.trim().toLowerCase();
+          if (lower === 'wake up tala' || lower === 'wake up' || lower === 'hey tala' || lower === 'tala') {
+            speakText("Hello! I'm awake and ready to help. What can I do for you today at BAIA Resort?");
+          } else {
+            // Strip leading wake phrase if present
+            const cleanPrompt = finalScript.replace(/^(wake up tala|hey tala|tala)[,!\s]*/i, '');
+            sendPromptToTala(cleanPrompt.trim() || finalScript.trim());
+          }
+        }
+      };
+
+      const handleSilenceEnd = () => {
+        setState('IDLE');
+        setInterimTranscript('');
+
+        if (settings.continuousListening) {
+          silenceCountRef.current += 1;
+          if (silenceCountRef.current === 1) {
+            addLog('[ SILENCE DETECTED ]: TALA asking if guest needs anything else...', 'info');
+            speakText('Is that all I can help you with today?');
+          } else {
+            addLog('[ STANDBY ]: TALA on standby. Say or tap "Wake up TALA" to activate.', 'system');
+            silenceCountRef.current = 0;
+          }
         }
       };
 
@@ -462,14 +498,12 @@ export default function App() {
         if (event.error !== 'no-speech') {
           addLog(`Microphone Error: ${event.error}`, 'error');
         }
-        setState('IDLE');
-        setInterimTranscript('');
+        handleSilenceEnd();
       };
 
       recognition.onend = () => {
         if (state === 'LISTENING') {
-          setState('IDLE');
-          setInterimTranscript('');
+          handleSilenceEnd();
         }
       };
 

@@ -90,7 +90,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       autoSpeak: true,
       soundEnabled: true,
       useHybridNeural: true,
-      continuousListening: false,
+      continuousListening: true,
     });
     setOpenrouterKeyInput('');
     setTestResult(null);
