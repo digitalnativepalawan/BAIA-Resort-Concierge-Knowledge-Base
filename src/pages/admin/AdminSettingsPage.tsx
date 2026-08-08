@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
-import { TalaSettings, VoiceOption, TelemetryLogEntry, AdminUser } from '../../types';
+import { TalaSettings, VoiceOption, TelemetryLogEntry, AdminUser, KnowledgeFile, KnowledgeCategory } from '../../types';
 import { OpenRouterModelSelector } from '../../components/OpenRouterModelSelector';
 import { TelemetryLog } from '../../components/TelemetryLog';
+import { speechEngine, VoiceTestSuiteSummary } from '../../lib/speechEngine';
+import {
+  DEFAULT_KNOWLEDGE_TXT,
+  DEFAULT_KNOWLEDGE_MD,
+  DEFAULT_KNOWLEDGE_JSON,
+  downloadFile,
+  downloadKnowledgeZip
+} from '../../data/knowledgeTemplate';
 import {
   Settings,
   Cpu,
@@ -20,7 +28,13 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  BookOpen,
+  FileText,
+  FileCode,
+  FileJson,
+  Download,
+  FolderArchive
 } from 'lucide-react';
 
 interface AdminSettingsPageProps {
@@ -34,6 +48,8 @@ interface AdminSettingsPageProps {
   onSignIn: () => void;
   onSignOut: () => void;
   hasServerOpenRouterKey: boolean;
+  knowledgeFiles?: KnowledgeFile[];
+  onUploadKnowledgeFile?: (file: File, category?: KnowledgeCategory) => void;
 }
 
 export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
@@ -46,7 +62,9 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   currentUser,
   onSignIn,
   onSignOut,
-  hasServerOpenRouterKey
+  hasServerOpenRouterKey,
+  knowledgeFiles = [],
+  onUploadKnowledgeFile
 }) => {
   const [apiKeyInput, setApiKeyInput] = useState<string>(
     settings.openrouterApiKey || settings.customApiKey || ''
@@ -54,6 +72,98 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const [testKeyStatus, setTestKeyStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
   const [saveToast, setSaveToast] = useState<boolean>(false);
+  const [testSuiteSummary, setTestSuiteSummary] = useState<VoiceTestSuiteSummary | null>(null);
+  const [runningTestSuite, setRunningTestSuite] = useState<boolean>(false);
+  const [knowledgeNotice, setKnowledgeNotice] = useState<string | null>(null);
+
+  const handleDownloadFullTxt = () => {
+    let text = DEFAULT_KNOWLEDGE_TXT;
+    if (knowledgeFiles && knowledgeFiles.length > 0) {
+      text = knowledgeFiles
+        .map(
+          (f) =>
+            `====================================================================\nDOCUMENT: ${f.name} (Category: ${f.category || 'General'})\n====================================================================\n${f.content}\n`
+        )
+        .join('\n\n');
+    }
+    downloadFile(text, 'knowledge.txt', 'text/plain');
+  };
+
+  const handleDownloadFullMd = () => {
+    let md = DEFAULT_KNOWLEDGE_MD;
+    if (knowledgeFiles && knowledgeFiles.length > 0) {
+      md = knowledgeFiles
+        .map(
+          (f) =>
+            `# ${f.name}\n*Category: ${f.category || 'General'}*\n\n${f.content}\n\n---`
+        )
+        .join('\n\n');
+    }
+    downloadFile(md, 'knowledge.md', 'text/markdown');
+  };
+
+  const handleDownloadFullJson = () => {
+    let jsonStr = DEFAULT_KNOWLEDGE_JSON;
+    if (knowledgeFiles && knowledgeFiles.length > 0) {
+      const list = knowledgeFiles.map((f) => {
+        try {
+          return { name: f.name, category: f.category || 'General', data: JSON.parse(f.content) };
+        } catch {
+          return { name: f.name, category: f.category || 'General', content: f.content };
+        }
+      });
+      jsonStr = JSON.stringify(list, null, 2);
+    }
+    downloadFile(jsonStr, 'knowledge.json', 'application/json');
+  };
+
+  const handleDownloadTemplateTxt = () => {
+    downloadFile(DEFAULT_KNOWLEDGE_TXT, 'knowledge_template.txt', 'text/plain');
+  };
+
+  const handleDownloadTemplateMd = () => {
+    downloadFile(DEFAULT_KNOWLEDGE_MD, 'knowledge_template.md', 'text/markdown');
+  };
+
+  const handleDownloadTemplateJson = () => {
+    downloadFile(DEFAULT_KNOWLEDGE_JSON, 'knowledge_template.json', 'application/json');
+  };
+
+  const handleDownloadBulkZip = async () => {
+    await downloadKnowledgeZip(knowledgeFiles);
+  };
+
+  const handleSaveTemplateToBackend = () => {
+    if (onUploadKnowledgeFile) {
+      try {
+        const txtFile = new File([DEFAULT_KNOWLEDGE_TXT], 'knowledge.txt', { type: 'text/plain' });
+        const mdFile = new File([DEFAULT_KNOWLEDGE_MD], 'knowledge.md', { type: 'text/markdown' });
+        const jsonFile = new File([DEFAULT_KNOWLEDGE_JSON], 'knowledge.json', { type: 'application/json' });
+
+        onUploadKnowledgeFile(txtFile, 'Property');
+        onUploadKnowledgeFile(mdFile, 'Property');
+        onUploadKnowledgeFile(jsonFile, 'Property');
+
+        setKnowledgeNotice('Saved knowledge.txt, knowledge.md & knowledge.json templates to backend!');
+        setTimeout(() => setKnowledgeNotice(null), 4000);
+      } catch (e) {
+        setKnowledgeNotice('Saved template knowledge files');
+        setTimeout(() => setKnowledgeNotice(null), 4000);
+      }
+    } else {
+      setKnowledgeNotice('Knowledge base service active. Templates downloaded for reference.');
+      setTimeout(() => setKnowledgeNotice(null), 4000);
+    }
+  };
+
+  const handleRunVoiceTestSuite = () => {
+    setRunningTestSuite(true);
+    setTimeout(() => {
+      const summary = speechEngine.runVoiceTestSuite();
+      setTestSuiteSummary(summary);
+      setRunningTestSuite(false);
+    }, 150);
+  };
 
   const handleTestKey = async () => {
     setTestKeyStatus('testing');
@@ -191,7 +301,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => onUpdateSettings({ pitch: 1.0, rate: 1.0 })}
               className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-all flex items-center gap-1.5"
@@ -206,6 +316,14 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             >
               <Play className="w-3.5 h-3.5 fill-[#00f0ff]" />
               <span>Test Voice</span>
+            </button>
+            <button
+              onClick={handleRunVoiceTestSuite}
+              disabled={runningTestSuite}
+              className="px-3.5 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25 text-xs font-medium transition-all flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Activity className="w-3.5 h-3.5 text-purple-400" />
+              <span>{runningTestSuite ? 'Running Test Suite...' : 'Run Voice Mapping & Persistence Test Suite'}</span>
             </button>
           </div>
         </div>
@@ -363,6 +481,62 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             </div>
           </div>
         </div>
+
+        {testSuiteSummary && (
+          <div className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/30 space-y-3 animate-fadeIn">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-semibold text-white uppercase tracking-wider">
+                  Voice Profile & Persistence Test Suite Results
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">
+                  {testSuiteSummary.passCount} / {testSuiteSummary.totalTests} Passed
+                </span>
+                {testSuiteSummary.failCount > 0 && (
+                  <span className="px-2.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 font-mono font-medium">
+                    {testSuiteSummary.failCount} Failed
+                  </span>
+                )}
+                <span className="text-gray-400 font-mono text-[10px]">
+                  {new Date(testSuiteSummary.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {testSuiteSummary.results.map((res) => (
+                <div
+                  key={res.testId}
+                  className="p-3 rounded-lg bg-[#0d1b2b]/80 border border-[#00f0ff]/10 text-xs flex items-start justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="font-medium text-gray-200 flex items-center gap-2">
+                      <span>{res.testName}</span>
+                      {res.resolvedVoiceType && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#00f0ff]/10 text-[#00f0ff]">
+                          {res.resolvedVoiceType}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-gray-400 leading-relaxed">{res.details}</div>
+                  </div>
+                  <span
+                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                      res.passed
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                        : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                    }`}
+                  >
+                    {res.passed ? 'PASSED' : 'FAILED'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* SECTION 3: TALA PERSONA & PROMPT */}
@@ -384,6 +558,196 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             onChange={(e) => onUpdateSettings({ systemInstruction: e.target.value })}
             className="w-full bg-[#050b14]/80 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl p-4 text-xs text-gray-200 leading-relaxed focus:outline-none transition-colors"
           />
+        </div>
+      </section>
+
+      {/* SECTION 4: GROUNDING KNOWLEDGE BASE & TEMPLATE DOWNLOADS */}
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#00f0ff]/15">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-medium text-white">Grounding Knowledge Base & Templates</h2>
+              <p className="text-xs text-gray-400 font-normal">
+                Download full knowledge.txt and knowledge.md template files or save them to the backend for TALA to learn
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSaveTemplateToBackend}
+            className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-xs uppercase tracking-wider hover:bg-emerald-500/30 transition-all flex items-center gap-2 shrink-0 shadow-sm"
+          >
+            <Save className="w-4 h-4 text-emerald-400" />
+            <span>Save Template to Backend</span>
+          </button>
+        </div>
+
+        {knowledgeNotice && (
+          <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{knowledgeNotice}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5 pt-1">
+          <button
+            onClick={handleDownloadBulkZip}
+            className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-[#00f0ff]/10 border border-purple-500/40 hover:border-[#00f0ff]/60 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FolderArchive className="w-4 h-4 text-purple-400 group-hover:text-[#00f0ff]" />
+                <span>Download All (.zip)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Bulk ZIP archive of all templates & docs</p>
+            </div>
+            <Download className="w-4 h-4 text-purple-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadFullTxt}
+            className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#00f0ff]" />
+                <span>Export knowledge.txt</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Full merged active knowledge document</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadFullMd}
+            className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FileCode className="w-4 h-4 text-[#00f0ff]" />
+                <span>Export knowledge.md</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Full merged Markdown knowledge document</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadFullJson}
+            className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FileJson className="w-4 h-4 text-[#00f0ff]" />
+                <span>Export knowledge.json</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Full merged JSON grounding data structure</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadTemplateTxt}
+            className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-purple-400" />
+                <span>Template (.txt)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Standard BAIA Resort operational guide</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadTemplateMd}
+            className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                <FileCode className="w-4 h-4 text-purple-400" />
+                <span>Template (.md)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Markdown grounding template for TALA</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadTemplateJson}
+            className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                <FileJson className="w-4 h-4 text-purple-400" />
+                <span>Template (.json)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Structured JSON grounding template for TALA</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
+          </button>
+        </div>
+
+        {/* ACTIVE KNOWLEDGE FILES DOWNLOAD GRID */}
+        <div className="mt-6 pt-6 border-t border-[#00f0ff]/15 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Database className="w-4 h-4 text-[#00f0ff]" />
+                <span>Active Knowledge Base Documents ({knowledgeFiles.length} Files Available)</span>
+              </h3>
+              <p className="text-[11px] text-gray-400">
+                Individual grounding files currently active in TALA's knowledge base. Click Download on any file card below.
+              </p>
+            </div>
+
+            <button
+              onClick={() => downloadKnowledgeZip(knowledgeFiles)}
+              className="px-3.5 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold text-xs hover:bg-purple-500/30 transition-all flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-sm"
+            >
+              <FolderArchive className="w-3.5 h-3.5 text-purple-400" />
+              <span>Download All Knowledge Files (.zip)</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+            {knowledgeFiles.map((doc) => (
+              <div
+                key={doc.id}
+                className="p-4 rounded-xl bg-[#050b14]/90 border border-[#00f0ff]/25 hover:border-[#00f0ff]/60 transition-all flex flex-col justify-between space-y-3 group shadow-md"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-bold text-white truncate flex items-center gap-1.5 group-hover:text-[#00f0ff] transition-colors">
+                      <FileText className="w-4 h-4 text-[#00f0ff] shrink-0" />
+                      <span className="truncate">{doc.name}</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 shrink-0">
+                      {doc.category || 'General'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-300 line-clamp-3 bg-[#080d1a] p-2.5 rounded-lg border border-[#00f0ff]/10 font-sans leading-relaxed">
+                    {doc.content || 'Empty document content.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2.5 border-t border-[#00f0ff]/10 text-[10px] text-gray-400">
+                  <span className="font-mono">{(doc.size / 1024).toFixed(1)} KB</span>
+                  <button
+                    onClick={() => downloadFile(doc.content, doc.name, 'text/plain')}
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-500/50 text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Download Document</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

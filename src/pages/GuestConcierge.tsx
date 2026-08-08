@@ -34,10 +34,11 @@ interface GuestConciergeProps {
 }
 
 const GUEST_QUICK_CHIPS = [
-  { label: 'Getting Around', prompt: 'Tell me about transportation, airport shuttles, and getting around San Vicente.' },
-  { label: 'Food & Dining', prompt: 'What food, breakfast, and dining options are available at BAIA Resort?' },
-  { label: 'Things To Do', prompt: 'What activities, tours, and places can I explore in San Vicente?' },
-  { label: 'About BAIA', prompt: 'Tell me about BAIA Resort amenities, pool, and guest services.' },
+  { label: '🌱 Do you have vegan food?', prompt: 'Do you have vegan or vegetarian food options at BAIA Resort?' },
+  { label: '🚐 How to get here from El Nido?', prompt: 'How do I get to BAIA Resort from El Nido or Puerto Princesa?' },
+  { label: '🛵 Can I rent a motorbike?', prompt: 'Can I rent a motorbike in San Vicente to explore Long Beach?' },
+  { label: '🏝️ What island tours do you offer?', prompt: 'What island hopping tours and water activities do you offer?' },
+  { label: '🏨 What are check-in times?', prompt: 'What are your check-in and checkout times and guest services?' },
 ];
 
 export const GuestConcierge: React.FC<GuestConciergeProps> = ({

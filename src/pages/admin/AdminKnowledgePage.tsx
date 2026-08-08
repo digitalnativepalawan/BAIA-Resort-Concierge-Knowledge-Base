@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { KnowledgeFile, KnowledgeCategory } from '../../types';
 import {
+  DEFAULT_KNOWLEDGE_TXT,
+  DEFAULT_KNOWLEDGE_MD,
+  DEFAULT_KNOWLEDGE_JSON,
+  downloadFile,
+  downloadKnowledgeZip
+} from '../../data/knowledgeTemplate';
+import {
   BookOpen,
   Plus,
   Upload,
@@ -12,7 +19,13 @@ import {
   Search,
   X,
   FileCode,
-  HardDrive
+  FileJson,
+  HardDrive,
+  Download,
+  Save,
+  Sparkles,
+  RefreshCw,
+  FolderArchive
 } from 'lucide-react';
 
 interface AdminKnowledgePageProps {
@@ -48,6 +61,82 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
   // Modal upload form state
   const [uploadCategory, setUploadCategory] = useState<KnowledgeCategory>('Property');
   const [dragOver, setDragOver] = useState<boolean>(false);
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+
+  const handleDownloadFullTxt = () => {
+    let text = DEFAULT_KNOWLEDGE_TXT;
+    if (files.length > 0) {
+      text = files
+        .map(
+          (f) =>
+            `====================================================================\nDOCUMENT: ${f.name} (Category: ${f.category || 'General'})\n====================================================================\n${f.content}\n`
+        )
+        .join('\n\n');
+    }
+    downloadFile(text, 'knowledge.txt', 'text/plain');
+  };
+
+  const handleDownloadFullMd = () => {
+    let md = DEFAULT_KNOWLEDGE_MD;
+    if (files.length > 0) {
+      md = files
+        .map(
+          (f) =>
+            `# ${f.name}\n*Category: ${f.category || 'General'}*\n\n${f.content}\n\n---`
+        )
+        .join('\n\n');
+    }
+    downloadFile(md, 'knowledge.md', 'text/markdown');
+  };
+
+  const handleDownloadFullJson = () => {
+    let jsonStr = DEFAULT_KNOWLEDGE_JSON;
+    if (files.length > 0) {
+      const list = files.map((f) => {
+        try {
+          return { name: f.name, category: f.category || 'General', data: JSON.parse(f.content) };
+        } catch {
+          return { name: f.name, category: f.category || 'General', content: f.content };
+        }
+      });
+      jsonStr = JSON.stringify(list, null, 2);
+    }
+    downloadFile(jsonStr, 'knowledge.json', 'application/json');
+  };
+
+  const handleDownloadTemplateTxt = () => {
+    downloadFile(DEFAULT_KNOWLEDGE_TXT, 'knowledge_template.txt', 'text/plain');
+  };
+
+  const handleDownloadTemplateMd = () => {
+    downloadFile(DEFAULT_KNOWLEDGE_MD, 'knowledge_template.md', 'text/markdown');
+  };
+
+  const handleDownloadTemplateJson = () => {
+    downloadFile(DEFAULT_KNOWLEDGE_JSON, 'knowledge_template.json', 'application/json');
+  };
+
+  const handleDownloadBulkZip = async () => {
+    await downloadKnowledgeZip(files);
+  };
+
+  const handleSaveTemplateToBackend = () => {
+    try {
+      const txtFile = new File([DEFAULT_KNOWLEDGE_TXT], 'knowledge.txt', { type: 'text/plain' });
+      const mdFile = new File([DEFAULT_KNOWLEDGE_MD], 'knowledge.md', { type: 'text/markdown' });
+      const jsonFile = new File([DEFAULT_KNOWLEDGE_JSON], 'knowledge.json', { type: 'application/json' });
+
+      onUploadFile(txtFile, 'Property');
+      onUploadFile(mdFile, 'Property');
+      onUploadFile(jsonFile, 'Property');
+
+      setTemplateNotice('Full knowledge.txt, knowledge.md & knowledge.json templates saved to backend knowledge base!');
+      setTimeout(() => setTemplateNotice(null), 4000);
+    } catch (e: any) {
+      setTemplateNotice('Saved default templates to knowledge base');
+      setTimeout(() => setTemplateNotice(null), 4000);
+    }
+  };
 
   // Filter files
   const filteredFiles = files.filter((f) => {
@@ -96,6 +185,143 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
           <Plus className="w-4 h-4" />
           <span>Add Knowledge</span>
         </button>
+      </div>
+
+      {templateNotice && (
+        <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{templateNotice}</span>
+        </div>
+      )}
+
+      {/* Grounding Template & Export Controls */}
+      <div className="bg-[#080d1a] border border-[#00f0ff]/25 rounded-2xl p-5 space-y-4 shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#00f0ff]/15">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <span>Knowledge Base Templates & Full Exports</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/30">
+                  Grounding Sync Ready
+                </span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Download structured knowledge files (.txt, .md, & .json) or seed the backend database so TALA reads & learns property FAQs immediately.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSaveTemplateToBackend}
+            className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-xs uppercase tracking-wider hover:bg-emerald-500/30 transition-all flex items-center gap-2 shrink-0 shadow-sm"
+          >
+            <Save className="w-4 h-4 text-emerald-400" />
+            <span>Save Template to Knowledge Base Backend</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <button
+            onClick={handleDownloadBulkZip}
+            className="p-3.5 rounded-xl bg-gradient-to-r from-purple-900/30 to-[#00f0ff]/10 border border-purple-500/40 hover:border-[#00f0ff]/60 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FolderArchive className="w-4 h-4 text-purple-400 group-hover:text-[#00f0ff]" />
+                <span>Download All (.zip)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Bulk archive with templates & docs</p>
+            </div>
+            <Download className="w-4 h-4 text-purple-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadFullTxt}
+            className="p-3.5 rounded-xl bg-[#050811] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#00f0ff]" />
+                <span>Export knowledge.txt</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Full merged knowledge plain text file</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadFullMd}
+            className="p-3.5 rounded-xl bg-[#050811] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FileCode className="w-4 h-4 text-[#00f0ff]" />
+                <span>Export knowledge.md</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Full merged Markdown document</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadFullJson}
+            className="p-3.5 rounded-xl bg-[#050811] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
+                <FileJson className="w-4 h-4 text-[#00f0ff]" />
+                <span>Export knowledge.json</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Full merged JSON data structure</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadTemplateTxt}
+            className="p-3.5 rounded-xl bg-[#050811] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-purple-400" />
+                <span>Template (.txt)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Base BAIA Resort operational guide</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadTemplateMd}
+            className="p-3.5 rounded-xl bg-[#050811] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                <FileCode className="w-4 h-4 text-purple-400" />
+                <span>Template (.md)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Markdown grounding template</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
+          </button>
+
+          <button
+            onClick={handleDownloadTemplateJson}
+            className="p-3.5 rounded-xl bg-[#050811] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                <FileJson className="w-4 h-4 text-purple-400" />
+                <span>Template (.json)</span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">Structured grounding JSON template</p>
+            </div>
+            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
+          </button>
+        </div>
       </div>
 
       {/* Category Filter Tabs & Search Bar */}
@@ -183,6 +409,14 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadFile(doc.content, doc.name, 'text/plain')}
+                      title="Download Document"
+                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center gap-1 text-[11px] font-bold px-2"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download</span>
+                    </button>
                     <button
                       onClick={() => setPreviewDoc(doc)}
                       title="Preview Document"
@@ -298,7 +532,14 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
               {previewDoc.content}
             </div>
 
-            <div className="pt-2 flex justify-end shrink-0">
+            <div className="pt-2 flex items-center justify-between shrink-0">
+              <button
+                onClick={() => downloadFile(previewDoc.content, previewDoc.name, 'text/plain')}
+                className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-xs uppercase tracking-wider hover:bg-emerald-500/30 flex items-center gap-2"
+              >
+                <Download className="w-4 h-4 text-emerald-400" />
+                <span>Download File</span>
+              </button>
               <button
                 onClick={() => setPreviewDoc(null)}
                 className="px-4 py-2 rounded-xl bg-[#00f0ff]/20 border border-[#00f0ff] text-[#00f0ff] font-bold text-xs uppercase tracking-wider hover:bg-[#00f0ff]/30"

@@ -38,7 +38,7 @@ import { soundEffects } from './utils/soundEffects';
 import { cleanTextForSpeech } from './utils/textUtils';
 
 const DEFAULT_SYSTEM_INSTRUCTION =
-  "You are TALA, the AI concierge for BAIA Resort. You help guests with questions about their stay, the property, local transportation, food, activities, San Vicente, and information contained in the BAIA knowledge base. Speak naturally, warmly, clearly, and concisely. Prioritize information from the supplied BAIA knowledge base. Never invent property information when the knowledge base does not contain the answer. When appropriate, tell the guest that staff can assist.";
+  "You are TALA, the warm, helpful AI concierge for BAIA Resort in San Vicente, Palawan. Engage with guests in a friendly, conversational, and hospitable manner. Answer guest queries concisely (2 to 4 sentences) and accurately using the BAIA knowledge base (such as vegan & dining options, transportation from El Nido/Puerto Princesa, motorbike rentals, island hopping tours, check-in, and resort amenities). Never repeat robotic disclaimers or canned phrases; speak naturally like an attentive front-desk host.";
 
 export default function App() {
   const [state, setState] = useState<TalaState>('IDLE');
@@ -296,20 +296,20 @@ export default function App() {
         () => {
           setState('IDLE');
           setSpeechVolume(0.2);
-
-          if (settings.continuousListening && startListeningRef.current) {
-            setTimeout(() => {
-              startListeningRef.current?.();
-            }, 400);
-          }
         }
       );
     },
-    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog]
+    [settings.selectedVoiceName, settings.pitch, settings.rate, addLog]
   );
 
   const stopSpeech = useCallback(() => {
     speechEngine.stopSpeech();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
     setState('IDLE');
     setSpeechVolume(0.2);
   }, []);
@@ -479,6 +479,10 @@ export default function App() {
         if (finalScript) {
           setInterimTranscript('');
           addLog(`[ SPEECH DETECTED ]: "${finalScript}"`, 'success');
+          try {
+            recognition.stop();
+          } catch (e) {}
+          recognitionRef.current = null;
           sendPromptToTala(finalScript);
         }
       };
@@ -675,6 +679,8 @@ export default function App() {
                 onSignIn={handleSignIn}
                 onSignOut={handleSignOut}
                 hasServerOpenRouterKey={hasServerOpenRouterKey}
+                knowledgeFiles={knowledgeFiles}
+                onUploadKnowledgeFile={handleUploadKnowledgeFile}
               />
             }
           />

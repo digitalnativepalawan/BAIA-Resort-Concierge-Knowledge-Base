@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, MicOff, Send, Terminal, Square } from 'lucide-react';
+import { Mic, MicOff, Send, HelpCircle, Square } from 'lucide-react';
 import { TalaState } from '../types';
 
 interface CommandBarProps {
@@ -29,11 +29,12 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   };
 
   const quickPrompts = [
-    "System status report",
-    "Tactical briefing",
-    "Security overview",
-    "Who is TALA?",
-    "Voice diagnostic"
+    "Do you have vegan food?",
+    "How to get there from El Nido?",
+    "Can I rent a motorbike?",
+    "What island tours do you offer?",
+    "What are check-in times?",
+    "Who is TALA?"
   ];
 
   const isListening = state === 'LISTENING';
@@ -45,8 +46,8 @@ export const CommandBar: React.FC<CommandBarProps> = ({
       {/* Quick Tactical Action Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
         <span className="text-gray-400 shrink-0 flex items-center gap-1.5 mr-1 text-xs font-medium">
-          <Terminal className="w-3.5 h-3.5 text-[#00f0ff]" />
-          <span>Tactics:</span>
+          <HelpCircle className="w-3.5 h-3.5 text-[#00f0ff]" />
+          <span>Guest FAQs:</span>
         </span>
         {quickPrompts.map((prompt, idx) => (
           <button

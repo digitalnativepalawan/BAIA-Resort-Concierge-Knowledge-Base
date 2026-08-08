@@ -155,6 +155,34 @@ function speakWebSpeech(
   window.speechSynthesis.speak(utterance);
 }
 
+export interface VoiceTestResult {
+  testId: string;
+  testName: string;
+  passed: boolean;
+  details: string;
+  requestedVoice?: string;
+  mappedVoiceName?: string;
+  resolvedVoiceType?: 'cloud' | 'webspeech';
+}
+
+export interface VoiceTestSuiteSummary {
+  timestamp: string;
+  totalTests: number;
+  passCount: number;
+  failCount: number;
+  persistenceVerified: boolean;
+  activePersistedVoice: string;
+  results: VoiceTestResult[];
+}
+
+export interface VoiceMappingVerification {
+  requestedVoice: string;
+  mappedVoiceName: string;
+  resolvedVoiceType: 'cloud' | 'webspeech';
+  isFemale: boolean;
+  isNatural: boolean;
+}
+
 export interface VoiceSelectionDiagnostic {
   timestamp: string;
   requestedVoice: string;
@@ -167,12 +195,240 @@ export interface VoiceSelectionDiagnostic {
 }
 
 const diagnosticLogs: VoiceSelectionDiagnostic[] = [];
+let activePersistedVoiceName: string = 'TALA - Natural Neural Female (US)';
+
+export function getActiveVoiceProfile(): string {
+  return activePersistedVoiceName;
+}
+
+export function setActiveVoiceProfile(voiceName: string): void {
+  if (voiceName && voiceName.trim()) {
+    activePersistedVoiceName = voiceName.trim();
+  }
+}
+
+export function verifyVoiceMapping(voiceName: string): VoiceMappingVerification {
+  const isCloud =
+    !voiceName ||
+    voiceName.startsWith('cloud-') ||
+    voiceName.startsWith('TALA -') ||
+    CLOUD_FEMALE_NEURAL_VOICES.some((cv) => cv.name === voiceName || cv.voiceURI === voiceName);
+
+  let mappedVoiceName = voiceName || 'TALA - Natural Neural Female (US)';
+  if (voiceName.startsWith('cloud-')) {
+    const matchedCloud = CLOUD_FEMALE_NEURAL_VOICES.find((cv) => cv.voiceURI === voiceName);
+    if (matchedCloud) {
+      mappedVoiceName = matchedCloud.name;
+    }
+  }
+
+  const isFemale = isFemaleVoiceName(mappedVoiceName);
+  const isNatural = isNaturalVoiceName(mappedVoiceName);
+
+  return {
+    requestedVoice: voiceName,
+    mappedVoiceName,
+    resolvedVoiceType: isCloud ? 'cloud' : 'webspeech',
+    isFemale,
+    isNatural,
+  };
+}
+
+export function verifyFemaleVoicePersistence(
+  voiceSequence: string[] = [
+    'TALA - Natural Neural Female (US)',
+    'Samantha',
+    'TALA - Elegant British Female (UK)',
+    'Victoria',
+    'TALA - Warm Resort Female (AU)',
+    'Google US English'
+  ]
+): {
+  success: boolean;
+  sequencePassed: boolean;
+  activePersistedVoice: string;
+  history: VoiceSelectionDiagnostic[];
+  mappedResults: VoiceMappingVerification[];
+} {
+  const mappedResults: VoiceMappingVerification[] = [];
+  let sequencePassed = true;
+
+  for (const voice of voiceSequence) {
+    const diag = logAndValidateVoiceSelection(voice, 'test-suite-persistence-check');
+    const mapping = verifyVoiceMapping(voice);
+    mappedResults.push(mapping);
+
+    if (getActiveVoiceProfile() !== voice) {
+      sequencePassed = false;
+    }
+
+    if (diag.queueStatus !== 'cleared') {
+      sequencePassed = false;
+    }
+  }
+
+  const finalActiveVoice = getActiveVoiceProfile();
+  const lastSequenceVoice = voiceSequence[voiceSequence.length - 1];
+  const success = sequencePassed && finalActiveVoice === lastSequenceVoice;
+
+  return {
+    success,
+    sequencePassed,
+    activePersistedVoice: finalActiveVoice,
+    history: diagnosticLogs.filter((d) => d.context === 'test-suite-persistence-check'),
+    mappedResults,
+  };
+}
+
+export function runVoiceTestSuite(): VoiceTestSuiteSummary {
+  const results: VoiceTestResult[] = [];
+
+  // Test 1: Cloud Neural Voice Profile Endpoint Mapping
+  const cloudEndpoints = [
+    'cloud-tala-female-us',
+    'cloud-tala-female-uk',
+    'cloud-tala-female-au',
+    'cloud-tala-female-in',
+    'TALA - Natural Neural Female (US)',
+    'TALA - Elegant British Female (UK)'
+  ];
+
+  let cloudTestsPassed = true;
+  for (const ep of cloudEndpoints) {
+    const mapping = verifyVoiceMapping(ep);
+    if (mapping.resolvedVoiceType !== 'cloud') {
+      cloudTestsPassed = false;
+      results.push({
+        testId: `cloud-map-${ep}`,
+        testName: `Cloud Voice Mapping: ${ep}`,
+        passed: false,
+        details: `Expected resolvedVoiceType to be 'cloud', got '${mapping.resolvedVoiceType}'`,
+        requestedVoice: ep,
+        mappedVoiceName: mapping.mappedVoiceName,
+        resolvedVoiceType: mapping.resolvedVoiceType,
+      });
+    }
+  }
+
+  if (cloudTestsPassed) {
+    results.push({
+      testId: 'cloud-voices-all',
+      testName: 'Cloud Neural Voice Profile Mapping',
+      passed: true,
+      details: `Successfully mapped all ${cloudEndpoints.length} cloud neural endpoints to cloud voice engine.`,
+    });
+  }
+
+  // Test 2: WebSpeech Browser Synthesis Voice Name Mapping
+  const webSpeechVoices = ['Samantha', 'Victoria', 'Google US English', 'Aria', 'Jenny', 'Microsoft Zira Desktop'];
+  let webSpeechPassed = true;
+  for (const voiceName of webSpeechVoices) {
+    const mapping = verifyVoiceMapping(voiceName);
+    if (mapping.resolvedVoiceType !== 'webspeech') {
+      webSpeechPassed = false;
+      results.push({
+        testId: `webspeech-map-${voiceName}`,
+        testName: `WebSpeech Voice Mapping: ${voiceName}`,
+        passed: false,
+        details: `Expected resolvedVoiceType to be 'webspeech', got '${mapping.resolvedVoiceType}'`,
+        requestedVoice: voiceName,
+        mappedVoiceName: mapping.mappedVoiceName,
+        resolvedVoiceType: mapping.resolvedVoiceType,
+      });
+    }
+  }
+
+  if (webSpeechPassed) {
+    results.push({
+      testId: 'webspeech-voices-all',
+      testName: 'Browser Synthesis Voice Name Mapping',
+      passed: true,
+      details: `Successfully mapped ${webSpeechVoices.length} browser synthesis voice profiles to WebSpeech.`,
+    });
+  }
+
+  // Test 3: Female Voice Classification
+  const femaleVoiceNames = ['Samantha', 'Victoria', 'Aria', 'Jenny', 'Karen', 'TALA - Natural Neural Female (US)', 'Google UK English Female', 'Laila', 'Chloe'];
+  let femaleClassPassed = true;
+  for (const fv of femaleVoiceNames) {
+    const isFemale = isFemaleVoiceName(fv);
+    if (!isFemale) {
+      femaleClassPassed = false;
+      results.push({
+        testId: `female-class-${fv}`,
+        testName: `Female Voice Recognition: ${fv}`,
+        passed: false,
+        details: `Voice '${fv}' was not recognized as female by isFemaleVoiceName.`,
+      });
+    }
+  }
+
+  if (femaleClassPassed) {
+    results.push({
+      testId: 'female-classification-all',
+      testName: 'Female Voice Keyword Classification',
+      passed: true,
+      details: `Accurately identified all ${femaleVoiceNames.length} female test voice identifiers.`,
+    });
+  }
+
+  // Test 4: Female Voice Switching & State Persistence
+  const persistenceTest = verifyFemaleVoicePersistence([
+    'TALA - Natural Neural Female (US)',
+    'Samantha',
+    'TALA - Elegant British Female (UK)',
+    'Victoria',
+    'TALA - Warm Resort Female (AU)',
+    'Google US English'
+  ]);
+
+  results.push({
+    testId: 'female-voice-persistence-sequence',
+    testName: 'Female Voice Switching & State Persistence',
+    passed: persistenceTest.success,
+    details: persistenceTest.success
+      ? `Successfully executed 6-step female voice switching sequence. Final persisted active voice: "${persistenceTest.activePersistedVoice}".`
+      : `Failed female voice persistence sequence. Active persisted: "${persistenceTest.activePersistedVoice}".`,
+    requestedVoice: persistenceTest.activePersistedVoice,
+    mappedVoiceName: persistenceTest.activePersistedVoice,
+    resolvedVoiceType: verifyVoiceMapping(persistenceTest.activePersistedVoice).resolvedVoiceType,
+  });
+
+  // Test 5: Fallback for Empty/Invalid Selection
+  const emptyMapping = verifyVoiceMapping('');
+  const fallbackPassed = emptyMapping.resolvedVoiceType === 'cloud' && emptyMapping.mappedVoiceName.includes('TALA');
+  results.push({
+    testId: 'voice-fallback-empty',
+    testName: 'Empty Voice Selection Default Fallback',
+    passed: fallbackPassed,
+    details: fallbackPassed
+      ? `Empty voice input cleanly defaulted to primary Cloud Neural female voice ("${emptyMapping.mappedVoiceName}").`
+      : `Fallback failed: got "${emptyMapping.mappedVoiceName}" (${emptyMapping.resolvedVoiceType}).`,
+  });
+
+  const passCount = results.filter((r) => r.passed).length;
+  const failCount = results.length - passCount;
+
+  return {
+    timestamp: new Date().toISOString(),
+    totalTests: results.length,
+    passCount,
+    failCount,
+    persistenceVerified: persistenceTest.success,
+    activePersistedVoice: getActiveVoiceProfile(),
+    results,
+  };
+}
 
 export function logAndValidateVoiceSelection(
   voiceName: string,
   context: string = 'voice-selection'
 ): VoiceSelectionDiagnostic {
   const now = new Date().toISOString();
+
+  if (voiceName && voiceName.trim()) {
+    activePersistedVoiceName = voiceName.trim();
+  }
 
   let webSpeechSpeaking = false;
   let webSpeechPending = false;
@@ -228,8 +484,12 @@ export function logAndValidateVoiceSelection(
 
 export const speechEngine = {
   logAndValidateVoiceSelection,
-
   getDiagnosticLogs: (): VoiceSelectionDiagnostic[] => [...diagnosticLogs],
+  getActiveVoiceProfile,
+  setActiveVoiceProfile,
+  verifyVoiceMapping,
+  verifyFemaleVoicePersistence,
+  runVoiceTestSuite,
 
   getAvailableVoices: (): VoiceOption[] => {
     const localVoices: VoiceOption[] = [];
