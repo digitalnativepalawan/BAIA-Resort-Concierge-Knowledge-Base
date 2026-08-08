@@ -1,79 +1,89 @@
 import { KnowledgeFile } from '../types';
 import { pb } from '../lib/pocketbase';
 
+const KNOWLEDGE_COLLECTION = 'knowledge_documents';
+
 export const knowledgeService = {
-  saveDoc: async (userId: string, file: KnowledgeFile) => {
+  saveDoc: async (file: KnowledgeFile): Promise<void> => {
     try {
-      await pb.collection('knowledge_documents').create({
-        title: file.name,
-        category: file.category || 'Other',
-        content: file.content,
-        source_type: 'file',
-        active: true
-      });
-    } catch (err) {
-      console.warn('PocketBase: Failed to save knowledge doc:', err);
-    }
-  },
-
-  deleteDoc: async (userId: string, fileId: string) => {
-    try {
-      await pb.collection('knowledge_documents').delete(fileId);
-    } catch (err) {
-      console.warn('PocketBase: Failed to delete knowledge doc:', err);
-    }
-  },
-
-  listDocs: async (): Promise<KnowledgeFile[]> => {
-    try {
-      const records = await pb.collection('knowledge_documents').getFullList({
-        sort: '-created'
-      });
-      return records.map((r: any) => ({
-        id: r.id,
-        name: r.title || 'Untitled',
-        size: (r.content || '').length,
-        content: r.content || '',
-        type: r.source_type || 'text',
-        uploadedAt: new Date(r.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        category: r.category || 'Other'
-      }));
-    } catch (err) {
-      console.warn('PocketBase: Failed to list knowledge docs:', err);
-      return [];
-    }
-  },
-
-  listenDocs: (userId: string, callback: (docs: KnowledgeFile[]) => void) => {
-    let active = true;
-
-    const load = async () => {
-      if (!active) return;
-      try {
-        const docs = await knowledgeService.listDocs();
-        if (active) callback(docs);
-      } catch (err) {
-        console.warn('PocketBase: listenDocs load failed:', err);
+      if (pb.authStore.isValid || true) {
+        try {
+          await pb.collection(KNOWLEDGE_COLLECTION).create({
+            title: file.name,
+            category: file.category || 'Other',
+            content: file.content,
+            source_type: file.type || 'text',
+            active: true
+          });
+        } catch (e) {
+          console.warn('PocketBase save knowledge notice:', e);
+        }
       }
-    };
+    } catch (e) {
+      console.warn('Failed to save doc to PocketBase:', e);
+    }
+  },
 
-    load();
-
-    const setupSubscription = async () => {
-      try {
-        await pb.collection('knowledge_documents').subscribe('*', (event: any) => {
-          if (active) load();
-        });
-      } catch (err) {
-        console.warn('PocketBase: listenDocs subscription failed:', err);
+  deleteDoc: async (fileId: string): Promise<void> => {
+    try {
+      if (pb.authStore.isValid) {
+        await pb.collection(KNOWLEDGE_COLLECTION).delete(fileId);
       }
-    };
+    } catch (e) {
+      console.warn('Failed to delete doc in PocketBase:', e);
+    }
+  },
 
-    setupSubscription();
+  listenDocs: (callback: (docs: KnowledgeFile[]) => void) => {
+    try {
+      pb.collection(KNOWLEDGE_COLLECTION)
+        .getList(1, 50, { sort: '-created' })
+        .then((res) => {
+          if (res.items.length > 0) {
+            const docs: KnowledgeFile[] = res.items.map((item) => ({
+              id: item.id,
+              name: item.title || 'Untitled Doc',
+              size: item.content?.length || 0,
+              type: item.source_type || 'text/plain',
+              content: item.content || '',
+              uploadedAt: new Date(item.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              category: item.category || 'Property'
+            }));
+            callback(docs);
+          }
+        })
+        .catch(() => {});
 
-    return () => {
-      active = false;
-      pb.collection('knowledge_documents').unsubscribe('*');
-    };
+      let unsubscribeFn: (() => void) | null = null;
+      pb.collection(KNOWLEDGE_COLLECTION)
+        .subscribe('*', () => {
+          pb.collection(KNOWLEDGE_COLLECTION)
+            .getList(1, 50, { sort: '-created' })
+            .then((res) => {
+              const docs: KnowledgeFile[] = res.items.map((item) => ({
+                id: item.id,
+                name: item.title || 'Untitled Doc',
+                size: item.content?.length || 0,
+                type: item.source_type || 'text/plain',
+                content: item.content || '',
+                uploadedAt: new Date(item.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                category: item.category || 'Property'
+              }));
+              callback(docs);
+            })
+            .catch(() => {});
+        })
+        .then((unsub) => {
+          unsubscribeFn = unsub;
+        })
+        .catch(() => {});
+
+      return () => {
+        if (unsubscribeFn) unsubscribeFn();
+        pb.collection(KNOWLEDGE_COLLECTION).unsubscribe('*').catch(() => {});
+      };
+    } catch (e) {
+      return () => {};
+    }
   }
 };

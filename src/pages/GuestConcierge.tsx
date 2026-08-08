@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TalaUser } from '../services/authService';
 import { ArcReactorHUD } from '../components/ArcReactorHUD';
 import { ConversationStream } from '../components/ConversationStream';
 import { CommandBar } from '../components/CommandBar';
-import { TalaState, ChatMessage } from '../types';
+import { TalaState, ChatMessage, AdminUser } from '../types';
 import {
   Compass,
   Utensils,
@@ -29,8 +28,8 @@ interface GuestConciergeProps {
   onStopSpeech: () => void;
   continuousListening: boolean;
   onToggleContinuousListening: () => void;
-  currentUser: TalaUser | null;
-  onLogin: (email: string, password: string) => void;
+  currentUser: AdminUser | null;
+  onSignIn: () => void;
   onSignOut: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
@@ -54,7 +53,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
   continuousListening,
   onToggleContinuousListening,
   currentUser,
-  onLogin,
+  onSignIn,
   onSignOut,
   soundEnabled,
   onToggleSound,
@@ -100,7 +99,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           {/* Link to Admin Management Console */}
           <Link
             to="/admin"
-            className="px-3 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(240,255,0,0.1)]"
+            className="px-3 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(0,240,255,0.1)]"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Admin Portal</span>
@@ -116,13 +115,13 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
               <UserIcon className="w-4 h-4" />
             </button>
           ) : (
-            <Link
-              to="/admin/settings"
+            <button
+              onClick={onSignIn}
               className="p-1.5 rounded-xl bg-[#0a0f1d] border border-[#00f0ff]/30 text-[#00f0ff] hover:bg-[#00f0ff]/20"
-              title="Admin Login"
+              title="Sign in to PocketBase"
             >
               <LogIn className="w-4 h-4" />
-            </Link>
+            </button>
           )}
         </div>
       </header>
@@ -165,11 +164,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
 
         {/* Conversation Message Stream */}
         <div className="w-full max-w-2xl min-h-[160px] max-h-[320px] overflow-y-auto rounded-2xl bg-[#080d1a]/80 border border-[#00f0ff]/20 p-4 shadow-xl">
-          <ConversationStream
-            messages={messages}
-            onSpeakText={() => {}}
-            isSpeakingNow={talaState === 'SPEAKING'}
-          />
+          <ConversationStream messages={messages} />
         </div>
 
         {/* Bottom Guest Command Composer */}

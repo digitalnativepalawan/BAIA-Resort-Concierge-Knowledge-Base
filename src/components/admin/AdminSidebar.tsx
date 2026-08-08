@@ -7,8 +7,7 @@ import {
   ClipboardList,
   Settings,
   Sparkles,
-  X,
-  Bot,
+  X
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -21,7 +20,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onMobileClose }) => 
     { label: 'Conversations', path: '/admin/conversations', icon: MessageSquare },
     { label: 'Knowledge', path: '/admin/knowledge', icon: BookOpen },
     { label: 'Guest Requests', path: '/admin/requests', icon: ClipboardList },
-    { label: 'Agents', path: '/admin/agents', icon: Bot },
     { label: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 

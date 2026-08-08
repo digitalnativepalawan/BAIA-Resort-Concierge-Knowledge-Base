@@ -6,6 +6,3 @@ coverage/
 *.log
 .env*
 !.env.example
-pocketbase/pb_data/
-pb_data/
-.tmp/

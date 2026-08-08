@@ -31,7 +31,7 @@ export interface TelemetryLogEntry {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'model' | 'staff';
+  role: 'user' | 'model';
   text: string;
   timestamp: string;
 }
@@ -42,6 +42,7 @@ export interface VoiceOption {
   default: boolean;
   voiceURI: string;
   gender: 'female' | 'male' | 'unknown';
+  isNatural?: boolean;
 }
 
 export interface TalaSettings {
@@ -108,7 +109,6 @@ export interface GuestRequest {
 
 export interface ConversationSession {
   id: string;
-  session_token?: string;
   guestLabel: string;
   room?: string;
   lastMessage: string;
@@ -118,29 +118,11 @@ export interface ConversationSession {
   messages: ChatMessage[];
 }
 
-export interface GuestConversationResponse {
-  conversation_id: string;
-  session_token: string;
-  status: string;
-}
-
-export interface StoredMessage {
+export interface AdminUser {
   id: string;
-  conversation_id: string;
-  role: 'user' | 'assistant' | 'staff' | 'system';
-  content: string;
-  agent_id?: string;
-  created: string;
+  email: string;
+  name?: string;
+  role?: string;
+  photoURL?: string;
 }
 
-export interface GuestSession {
-  conversationId: string;
-  guestLabel: string;
-  room?: string;
-}
-
-export interface BackendStatus {
-  online: boolean;
-  pocketbaseConnected: boolean;
-  hasServerOpenRouterKey: boolean;
-}

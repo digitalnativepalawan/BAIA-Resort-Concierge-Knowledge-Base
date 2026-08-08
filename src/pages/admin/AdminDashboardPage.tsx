@@ -305,7 +305,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               <Cloud className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs text-gray-400 uppercase font-semibold">PocketBase</div>
+              <div className="text-xs text-gray-400 uppercase font-semibold">Cloud Sync</div>
               <div className="text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 Connected

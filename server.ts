@@ -1,12 +1,6 @@
 import express from 'express';
 import path from 'path';
-import crypto from 'crypto';
 import { createServer as createViteServer } from 'vite';
-import PocketBase from 'pocketbase';
-
-// Server-side PocketBase config (NOT exposed to frontend via VITE_)
-const POCKETBASE_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:8090';
-const pb = new PocketBase(POCKETBASE_URL);
 
 const DEFAULT_SYSTEM_INSTRUCTION =
   "You are TALA, the AI concierge for BAIA. You help guests with questions about their stay, the property, local transportation, food, activities, San Vicente, and information contained in the BAIA knowledge base. Speak naturally, warmly, clearly, and concisely. Prioritize information from the supplied BAIA knowledge base. Never invent property information when the knowledge base does not contain the answer. When appropriate, tell the guest that staff can assist.";
@@ -14,12 +8,7 @@ const DEFAULT_SYSTEM_INSTRUCTION =
 // Server-side cache for OpenRouter model catalog
 let cachedModels: any[] = [];
 let cacheTimestamp = 0;
-const CACHE_TTL_MS = 20 * 60 * 1000;
-
-// PocketBase health status cache
-let pbLastHealthy = false;
-let pbLastCheck = 0;
-const PB_HEALTH_TTL_MS = 30 * 1000; // 30 seconds
+const CACHE_TTL_MS = 20 * 60 * 1000; // 20 minutes
 
 // Fallback catalog if OpenRouter model list endpoint is unreachable and cache is empty
 const FALLBACK_MODELS = [
@@ -75,225 +64,21 @@ const FALLBACK_MODELS = [
   }
 ];
 
-// Check PocketBase health (cached)
-async function checkPocketBaseHealth(): Promise<boolean> {
-  const now = Date.now();
-  if (now - pbLastCheck < PB_HEALTH_TTL_MS) {
-    return pbLastHealthy;
-  }
-  try {
-    await pb.health.check();
-    pbLastHealthy = true;
-  } catch {
-    pbLastHealthy = false;
-  }
-  pbLastCheck = now;
-  return pbLastHealthy;
-}
-
-// Server-side PocketBase admin auth (cached, refreshed as needed)
-async function ensureServerAuth(): Promise<boolean> {
-  if (pb.authStore.isValid) return true;
-  const email = process.env.POCKETBASE_ADMIN_EMAIL;
-  const password = process.env.POCKETBASE_ADMIN_PASSWORD;
-  if (!email || !password) {
-    console.warn('[TALA SERVER] POCKETBASE_ADMIN_EMAIL/PASSWORD not configured');
-    return false;
-  }
-  try {
-    await pb.collection('_superusers').authWithPassword(email, password);
-    return true;
-  } catch (err: any) {
-    console.warn('[TALA SERVER] PocketBase superuser auth failed:', err.message);
-    return false;
-  }
-}
-
-// ── Agent helpers: resolve agent profiles from PocketBase ───────────────────
-async function fetchAgentBySlug(slug: string): Promise<any | null> {
-  try {
-    const records = await pb.collection('agents').getFullList(200, {
-      filter: `slug = "${slug}"`,
-    });
-    return records[0] || null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchAgentById(id: string): Promise<any | null> {
-  try {
-    return await pb.collection('agents').getOne(id);
-  } catch {
-    return null;
-  }
-}
-
-// ── Knowledge grounding: fetch active knowledge docs from PocketBase ────────
-async function getGroundedKnowledgeBase(
-  categories?: string[]
-): Promise<string> {
-  try {
-    const authenticated = await ensureServerAuth();
-    if (!authenticated) {
-      console.warn('[TALA KNOWLEDGE] Cannot authenticate to PocketBase');
-      return '';
-    }
-
-    let filter = 'active=true';
-    if (categories && categories.length > 0) {
-      const categoryFilter = categories.map((c) => `category="${c}"`).join(' || ');
-      filter = `active=true && (${categoryFilter})`;
-    }
-    const records = await pb.collection('knowledge_documents').getFullList(200, {
-      filter,
-      sort: '-id'
-    });
-
-    if (records.length === 0) return '';
-
-    const docsText = records
-      .filter((r: any) => r.content)
-      .map((r: any, idx: number) => `--- GROUNDED DOCUMENT ${idx + 1} (${r.category || 'General'}): ${r.title} ---\n${r.content}`)
-      .join('\n\n');
-
-    return docsText ? `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.` : '';
-  } catch (err) {
-    console.warn('[TALA KNOWLEDGE] Failed to fetch knowledge base:', err);
-    return '';
-  }
-}
-
-// Validate guest session token for a conversation
-async function validateGuestSession(conversationId: string, sessionToken: string): Promise<boolean> {
-  if (!conversationId || !sessionToken) return false;
-  try {
-    const authenticated = await ensureServerAuth();
-    if (!authenticated) return false;
-
-    const record = await pb.collection('conversations').getOne(conversationId);
-    return record.session_token === sessionToken;
-  } catch {
-    return false;
-  }
-}
-
 async function startServer() {
   const app = express();
-  const PORT = parseInt(process.env.PORT || '3000', 10);
+  const PORT = 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
-  // API Health Check (real PocketBase health)
-  app.get('/api/health', async (_req, res) => {
-    const pbConnected = await checkPocketBaseHealth();
+  // API Health Check
+  app.get('/api/health', (req, res) => {
     res.json({
-      status: pbConnected ? 'online' : 'degraded',
+      status: 'online',
       system: 'TALA Core Engine v2.5.0',
       timestamp: new Date().toISOString(),
-      openrouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
-      pocketbaseConnected: pbConnected
+      hasServerOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY)
     });
   });
-
-  // ==========================================
-  // GUEST API ROUTES (server-side PocketBase)
-  // ==========================================
-
-  // Create a new guest conversation with session token
-  app.post('/api/guest/conversations', async (req, res) => {
-    try {
-      const authenticated = await ensureServerAuth();
-      if (!authenticated) {
-        return res.status(503).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-      }
-
-      const { guest_label, room } = req.body;
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-
-      const record = await pb.collection('conversations').create({
-        guest_label: guest_label || 'Guest',
-        room: room || 'Main Villa',
-        status: 'active',
-        session_token: sessionToken
-      });
-      res.json({ conversation_id: record.id, session_token: sessionToken, status: record.status });
-    } catch (err: any) {
-      console.error('[GUEST API] Failed to create conversation:', err);
-      res.status(500).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-    }
-  });
-
-  // Save a guest message (role forced to 'user')
-  app.post('/api/guest/messages', async (req, res) => {
-    try {
-      const { conversation_id, content, session_token } = req.body;
-      if (!conversation_id || !content || !session_token) {
-        return res.status(400).json({ error: 'conversation_id, content, and session_token are required' });
-      }
-
-      // Validate session token
-      const valid = await validateGuestSession(conversation_id, session_token);
-      if (!valid) {
-        return res.status(403).json({ error: 'Invalid session token' });
-      }
-
-      const authenticated = await ensureServerAuth();
-      if (!authenticated) {
-        return res.status(503).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-      }
-
-      // Force role to 'user' - never trust guest-supplied role
-      const record = await pb.collection('messages').create({
-        conversation: conversation_id,
-        role: 'user',
-        content,
-        agent_id: 'tala-concierge'
-      });
-      res.json({ id: record.id });
-    } catch (err: any) {
-      console.error('[GUEST API] Failed to save message:', err);
-      res.status(500).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-    }
-  });
-
-  // Get messages for a conversation (requires valid session token)
-  app.get('/api/guest/conversations/:conversationId/messages', async (req, res) => {
-    try {
-      const { conversationId } = req.params;
-      const sessionToken = req.headers['x-tala-session'] as string;
-
-      if (!sessionToken) {
-        return res.status(403).json({ error: 'Session token required' });
-      }
-
-      const valid = await validateGuestSession(conversationId, sessionToken);
-      if (!valid) {
-        return res.status(403).json({ error: 'Invalid session token' });
-      }
-
-      const authenticated = await ensureServerAuth();
-      if (!authenticated) {
-        return res.status(503).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-      }
-
-      const records = await pb.collection('messages').getFullList(200, {
-        filter: `conversation="${conversationId}"`
-      });
-      const messages = records.map((r: any) => ({
-        id: r.id,
-        role: r.role === 'assistant' ? 'model' : r.role,
-        text: r.content,
-      }));
-      res.json({ messages });
-    } catch (err: any) {
-      console.error('[GUEST API] Failed to get messages:', err);
-      res.status(500).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-    }
-  });
-
-  // NOTE: GET /api/guest/conversations (list all) REMOVED - use admin PocketBase access instead
-  // NOTE: POST /api/guest/messages with arbitrary role REMOVED - role is forced to 'user' above
 
   // OpenRouter Model Catalog Endpoint with Server-Side Caching
   app.get('/api/models', async (req, res) => {
@@ -352,10 +137,12 @@ async function startServer() {
         };
       });
 
+      // Always ensure 'openrouter/free' is at the top if present or prepend it
       const hasFreeRouter = normalizedList.some((m: any) => m.id === 'openrouter/free');
       if (!hasFreeRouter) {
         normalizedList.unshift(FALLBACK_MODELS[0]);
       } else {
+        // Move openrouter/free to the very top
         normalizedList.sort((a: any, b: any) => {
           if (a.id === 'openrouter/free') return -1;
           if (b.id === 'openrouter/free') return 1;
@@ -379,54 +166,38 @@ async function startServer() {
   // TALA Voice Assistant Chat Endpoint (OpenRouter Gateway)
   app.post('/api/chat', async (req, res) => {
     try {
-      const { model, prompt, history, conversation_id, session_token, agentSlug } = req.body;
-
-      // Default to tala-concierge if no agentSlug provided
-      const resolvedAgentSlug = agentSlug || 'tala-concierge';
+      const {
+        openrouterApiKey,
+        customApiKey,
+        model,
+        prompt,
+        history,
+        systemInstruction
+      } = req.body;
 
       if (!prompt || typeof prompt !== 'string') {
         return res.status(400).json({ error: 'Prompt is required' });
       }
 
-      // ── Resolve agent profile from DB (trust DB, not client) ──────────
-      let agentProfile: any = null;
-      let activeSystemInstruction = DEFAULT_SYSTEM_INSTRUCTION;
-      let agentModelId: string | null = null;
+      const activeSystemInstruction = systemInstruction && systemInstruction.trim()
+        ? systemInstruction
+        : DEFAULT_SYSTEM_INSTRUCTION;
 
-      agentProfile = await fetchAgentBySlug(resolvedAgentSlug);
-      if (agentProfile) {
-        activeSystemInstruction = agentProfile.system_prompt || DEFAULT_SYSTEM_INSTRUCTION;
-        agentModelId = agentProfile.model_id || null;
+      let rawKey = (openrouterApiKey && typeof openrouterApiKey === 'string' && openrouterApiKey.trim())
+        ? openrouterApiKey
+        : (customApiKey && typeof customApiKey === 'string' && customApiKey.trim() ? customApiKey : (process.env.OPENROUTER_API_KEY || ''));
 
-        // Block offline/disabled agents (check BEFORE API key to give proper 403)
-        if (agentProfile.status === 'offline' || agentProfile.status === 'disabled') {
-          return res.status(403).json({
-            error: `Agent "${agentProfile.name}" is currently ${agentProfile.status}.`
-          });
-        }
-      }
-
-      // Server-only API key: do NOT accept browser-supplied keys
-      const apiKey = (process.env.OPENROUTER_API_KEY || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+      const apiKey = rawKey.replace(/^["'\s]+|["'\s]+$/g, '').trim();
 
       if (!apiKey) {
-        console.error('[TALA CHAT] OPENROUTER_API_KEY not configured on server');
-        return res.status(503).json({
-          error: 'TALA is temporarily unavailable. Please contact resort staff.'
+        return res.status(400).json({
+          error: 'No OpenRouter API key available. Please configure your OpenRouter API key in Settings.'
         });
       }
 
       const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
         { role: 'system', content: activeSystemInstruction }
       ];
-
-      // Server-side knowledge grounding: append knowledge base docs to system instruction
-      // Filter by agent knowledge categories if available
-      const knowledgeCategories = agentProfile?.knowledge_categories || [];
-      const knowledgeBase = await getGroundedKnowledgeBase(knowledgeCategories);
-      if (knowledgeBase) {
-        messages[0].content += knowledgeBase;
-      }
 
       if (Array.isArray(history)) {
         for (const item of history) {
@@ -441,7 +212,7 @@ async function startServer() {
 
       messages.push({ role: 'user', content: prompt });
 
-      const targetModel = agentModelId || model || 'openrouter/free';
+      const targetModel = model || 'openrouter/free';
 
       console.log(`[TALA OPENROUTER] Dispatching payload to model '${targetModel}'...`);
 
@@ -469,7 +240,7 @@ async function startServer() {
       } catch (e) {
         console.error('[TALA OPENROUTER PARSE ERROR]', rawOpenRouterText.slice(0, 300));
         return res.status(502).json({
-          error: 'TALA is temporarily unavailable. Please contact resort staff.'
+          error: `OpenRouter gateway error (${openrouterResponse.status}): ${rawOpenRouterText.slice(0, 200)}`
         });
       }
 
@@ -479,8 +250,8 @@ async function startServer() {
           : (openrouterData.error || `HTTP ${openrouterResponse.status}`);
 
         console.warn('[TALA OPENROUTER REJECTED]', errDetail);
-        return res.status(502).json({
-          error: 'TALA is temporarily unavailable. Please contact resort staff.'
+        return res.status(openrouterResponse.status || 400).json({
+          error: `OpenRouter API Error: ${errDetail}`
         });
       }
 
@@ -488,27 +259,7 @@ async function startServer() {
       const responseText = choice?.message?.content || choice?.text || '';
 
       if (!responseText) {
-        return res.status(500).json({ error: 'TALA is temporarily unavailable. Please contact resort staff.' });
-      }
-
-      // Server-side: persist assistant response to PocketBase if conversation context provided
-      if (conversation_id && session_token) {
-        try {
-          const valid = await validateGuestSession(conversation_id, session_token);
-          if (valid) {
-            const authenticated = await ensureServerAuth();
-            if (authenticated) {
-              await pb.collection('messages').create({
-                conversation: conversation_id,
-                role: 'assistant',
-                content: responseText,
-                agent_id: agentProfile?.slug || 'tala-concierge'
-              });
-            }
-          }
-        } catch (persistErr) {
-          console.warn('[TALA CHAT] Failed to persist assistant message:', persistErr);
-        }
+        return res.status(500).json({ error: 'OpenRouter returned empty signal response.' });
       }
 
       return res.json({
@@ -521,59 +272,8 @@ async function startServer() {
     } catch (error: any) {
       console.error('[TALA API ERROR]', error);
       return res.status(500).json({
-        error: 'TALA is temporarily unavailable. Please contact resort staff.'
+        error: error.message || 'An error occurred while communicating with TALA AI core.'
       });
-    }
-  });
-
-  // ── Agent Test Endpoint (ADMIN AUTH REQUIRED) ──────────────────────────
-  app.get('/api/agents/:slug/test', async (req, res) => {
-    try {
-      // Require admin authentication
-      const authenticated = await ensureServerAuth();
-      if (!authenticated) {
-        return res.status(401).json({ error: 'Admin authentication required' });
-      }
-
-      const { slug } = req.params;
-      const agent = await fetchAgentBySlug(slug);
-
-      if (!agent) {
-        return res.status(404).json({ error: 'Agent not found' });
-      }
-
-      // Basic validation
-      const issues: string[] = [];
-      if (agent.status !== 'online') {
-        issues.push(`Agent status is '${agent.status}', expected 'online'`);
-      }
-      if (!agent.system_prompt || agent.system_prompt.trim().length === 0) {
-        issues.push('No system prompt configured');
-      }
-      if (!agent.model_id) {
-        issues.push('No model configured');
-      }
-
-      const apiKey = (process.env.OPENROUTER_API_KEY || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
-
-      return res.json({
-        ok: issues.length === 0,
-        agent: {
-          id: agent.id,
-          slug: agent.slug,
-          name: agent.name,
-          status: agent.status,
-          model_id: agent.model_id,
-          has_system_prompt: Boolean(agent.system_prompt),
-          skills: agent.skills || [],
-          permissions: agent.permissions || [],
-        },
-        issues,
-        apiKeyConfigured: Boolean(apiKey),
-      });
-    } catch (err: any) {
-      console.error('[AGENT TEST ERROR]', err);
-      return res.status(500).json({ error: 'Agent test failed' });
     }
   });
 

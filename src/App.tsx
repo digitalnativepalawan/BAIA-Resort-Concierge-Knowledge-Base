@@ -10,10 +10,11 @@ import {
   KnowledgeFile,
   KnowledgeCategory,
   GuestRequest,
-  GuestRequestStatus
+  GuestRequestStatus,
+  AdminUser
 } from './types';
 
-import { authService, TalaUser } from './services/authService';
+import { authService } from './services/authService';
 import { conversationService } from './services/conversationService';
 import { knowledgeService } from './services/knowledgeService';
 import { settingsService } from './services/settingsService';
@@ -26,7 +27,6 @@ import { AdminConversationsPage } from './pages/admin/AdminConversationsPage';
 import { AdminKnowledgePage } from './pages/admin/AdminKnowledgePage';
 import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
-import { AdminAgentsPage } from './pages/admin/AdminAgentsPage';
 
 import { soundEffects } from './utils/soundEffects';
 import { cleanTextForSpeech } from './utils/textUtils';
@@ -42,7 +42,7 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [hasServerOpenRouterKey, setHasServerOpenRouterKey] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<TalaUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
 
   // Knowledge Files State
   const [knowledgeFiles, setKnowledgeFiles] = useState<KnowledgeFile[]>(() => {
@@ -64,6 +64,12 @@ export default function App() {
     let openrouterKey = '';
     let selectedOpenRouterModel = 'openrouter/free';
 
+    const fallbackOpenRouterKey =
+      localStorage.getItem('openrouter_api_key') ||
+      localStorage.getItem('tala_openrouter_api_key') ||
+      localStorage.getItem('OPENROUTER_API_KEY') ||
+      (typeof window !== 'undefined' && (window as any).OPENROUTER_API_KEY ? (window as any).OPENROUTER_API_KEY : '');
+
     const saved = localStorage.getItem('tala_settings');
     if (saved) {
       try {
@@ -73,6 +79,10 @@ export default function App() {
           if (parsed.selectedOpenRouterModel) selectedOpenRouterModel = parsed.selectedOpenRouterModel;
         }
       } catch (e) {}
+    }
+
+    if (!openrouterKey && fallbackOpenRouterKey) {
+      openrouterKey = String(fallbackOpenRouterKey).trim();
     }
 
     return {
@@ -104,12 +114,13 @@ export default function App() {
     }
   }, [knowledgeFiles]);
 
-  // Persist settings (without API keys)
+  // Persist settings
   useEffect(() => {
-    const safeSettings = { ...settings };
-    delete safeSettings.openrouterApiKey;
-    delete safeSettings.customApiKey;
-    localStorage.setItem('tala_settings', JSON.stringify(safeSettings));
+    localStorage.setItem('tala_settings', JSON.stringify(settings));
+    if (settings.openrouterApiKey) {
+      localStorage.setItem('openrouter_api_key', settings.openrouterApiKey.trim());
+      localStorage.setItem('tala_openrouter_api_key', settings.openrouterApiKey.trim());
+    }
     soundEffects.setEnabled(settings.soundEnabled);
   }, [settings]);
 
@@ -125,37 +136,46 @@ export default function App() {
     setLogs((prev) => [...prev.slice(-40), newEntry]);
   }, []);
 
-  // Auth initializer
+  // PocketBase Auth Initializer
   useEffect(() => {
     const unsubscribe = authService.subscribeToAuth(async (user) => {
       setCurrentUser(user);
       if (user) {
-        addLog(`[ AUTH ]: Authenticated as ${user.name || user.email}`, 'success');
-        try {
-          const remoteSettings = await settingsService.getSettings(user.id);
-          if (remoteSettings) {
-            setSettings((prev) => ({ ...prev, ...remoteSettings }));
-          }
-        } catch {}
+        addLog(`[ POCKETBASE ]: Authenticated as ${user.name || user.email}`, 'success');
+        const remoteSettings = await settingsService.getSettings();
+        if (remoteSettings) {
+          setSettings((prev) => ({ ...prev, ...remoteSettings }));
+        }
       } else {
-        addLog('[ AUTH ]: Guest mode active', 'info');
+        addLog('[ POCKETBASE ]: PocketBase client active', 'info');
       }
     });
 
     return () => unsubscribe();
   }, [addLog]);
 
-  // Knowledge and requests listeners (guest mode - no auth required)
+  // Real-Time Sync for Chat, Knowledge Docs, and Guest Requests
   useEffect(() => {
-    const unsubDocs = knowledgeService.listenDocs('guest', (remoteDocs) => {
-      setKnowledgeFiles(remoteDocs);
+    const unsubChat = conversationService.listenChatMessages((remoteMsgs) => {
+      if (remoteMsgs && remoteMsgs.length > 0) {
+        setMessages(remoteMsgs);
+      }
+    });
+
+    const unsubDocs = knowledgeService.listenDocs((remoteDocs) => {
+      if (remoteDocs && remoteDocs.length > 0) {
+        setKnowledgeFiles(remoteDocs);
+      }
     });
 
     const unsubRequests = requestService.listenRequests((remoteRequests) => {
-      setGuestRequests(remoteRequests);
+      if (remoteRequests && remoteRequests.length > 0) {
+        setGuestRequests(remoteRequests);
+      }
     });
 
     return () => {
+      unsubChat();
       unsubDocs();
       unsubRequests();
     };
@@ -164,17 +184,24 @@ export default function App() {
   // Sync settings to PocketBase
   useEffect(() => {
     if (currentUser) {
-      settingsService.saveSettings(currentUser.id, settings);
+      settingsService.saveSettings(settings);
     }
   }, [currentUser, settings]);
 
-  const handleLogin = useCallback(async (email: string, password: string) => {
+  const handleSignIn = useCallback(async () => {
     try {
       soundEffects.playProcessingBeep();
-      await authService.login(email, password);
+      const email = window.prompt('Enter PocketBase Admin/Staff Email:', 'admin@baiaresort.com');
+      if (!email) return;
+      const pass = window.prompt('Enter PocketBase Password:');
+      if (!pass) return;
+
+      const user = await authService.login(email, pass);
+      setCurrentUser(user);
+      addLog(`[ POCKETBASE ]: Logged in as ${user.email}`, 'success');
       soundEffects.playResponseChime();
     } catch (err: any) {
-      addLog(`Auth error: ${err.message || err}`, 'error');
+      addLog(`PocketBase Auth error: ${err.message || err}`, 'error');
       soundEffects.playErrorSound();
     }
   }, [addLog]);
@@ -182,7 +209,8 @@ export default function App() {
   const handleSignOut = useCallback(async () => {
     try {
       await authService.logoutUser();
-      addLog('[ AUTH ]: Signed out.', 'info');
+      setCurrentUser(null);
+      addLog('[ POCKETBASE ]: Logged out.', 'info');
       soundEffects.playProcessingBeep();
     } catch (err: any) {
       addLog(`Logout error: ${err.message || err}`, 'error');
@@ -208,7 +236,7 @@ export default function App() {
         );
       })
       .catch(() => {
-        addLog('Server health check pending or offline mode.', 'info');
+        addLog('Server health check pending or offline mode.', 'warning');
       });
   }, [addLog]);
 
@@ -219,44 +247,83 @@ export default function App() {
       const rawVoices = window.speechSynthesis.getVoices();
       if (rawVoices.length === 0) return;
 
-      const femaleRegex = /(samantha|zira|victoria|karen|jenny|aria|eva|monica|serena|siri|female|google.*us.*english|google.*uk.*female|natural.*female|microsoft.*natural|microsoft.*jenny|microsoft.*aria)/i;
+      const femaleKeywords = [
+        'female', 'woman', 'girl', 'jenny', 'aria', 'samantha', 'zira', 'victoria', 
+        'karen', 'eva', 'monica', 'serena', 'siri', 'ana', 'clara', 'emma', 'sonia', 
+        'ava', 'michelle', 'moira', 'fiona', 'veena', 'susan', 'allison', 'nora', 
+        'chloe', 'zoey', 'emily', 'olivia', 'sophia', 'isabella', 'charlotte', 'mia', 
+        'amelia', 'harper', 'evelyn', 'abigail', 'ella', 'kyoko', 'yuri', 'sin-ji', 
+        'meijia', 'tingting', 'huihui', 'yaoyao', 'kanya', 'laila', 'zhiyu'
+      ];
+
+      const maleKeywords = [
+        'male', 'man', 'boy', 'david', 'mark', 'george', 'guy', 'jason', 'stefan', 
+        'paul', 'christopher', 'brian', 'eric', 'andrew', 'james', 'john', 'michael', 
+        'robert', 'william', 'richard', 'joseph', 'thomas', 'charles', 'daniel', 
+        'matthew', 'anthony', 'donald', 'steven', 'kenneth', 'joshua', 'kevin', 
+        'edward', 'ronald', 'timothy', 'jeffrey', 'ryan', 'jacob', 'gary', 'nicholas', 
+        'jonathan', 'stephen', 'scott', 'brandon', 'benjamin', 'samuel', 'gregory', 
+        'alexander', 'frank', 'patrick', 'raymond', 'jack', 'dennis', 'jerry', 
+        'tyler', 'aaron', 'adam', 'nathan', 'henry', 'douglas', 'zachary', 'peter'
+      ];
+
+      const naturalKeywords = ['natural', 'online', 'neural', 'wavenet', 'enhanced', 'premium', 'studio', 'deep'];
 
       const formatted: VoiceOption[] = rawVoices.map((v) => {
-        const isFemale = femaleRegex.test(v.name);
+        const lowerName = v.name.toLowerCase();
+        const hasFemaleKeyword = femaleKeywords.some((k) => lowerName.includes(k));
+        const hasMaleKeyword = maleKeywords.some((k) => lowerName.includes(k));
+        const isNatural = naturalKeywords.some((k) => lowerName.includes(k));
+
+        let gender: 'female' | 'male' | 'unknown' = 'unknown';
+        if (hasFemaleKeyword && !hasMaleKeyword) {
+          gender = 'female';
+        } else if (hasMaleKeyword && !hasFemaleKeyword) {
+          gender = 'male';
+        } else if (hasFemaleKeyword) {
+          gender = 'female';
+        }
+
         return {
           name: v.name,
           lang: v.lang,
           default: v.default,
           voiceURI: v.voiceURI,
-          gender: isFemale ? 'female' : 'unknown'
+          gender,
+          isNatural
         };
       });
 
+      // Sort natural female voices first, then standard female voices, then natural others, then rest
       formatted.sort((a, b) => {
-        const aFemale = a.gender === 'female';
-        const bFemale = b.gender === 'female';
-        if (aFemale && !bFemale) return -1;
-        if (!aFemale && bFemale) return 1;
-        return 0;
+        const aScore = (a.gender === 'female' ? 10 : 0) + (a.isNatural ? 5 : 0);
+        const bScore = (b.gender === 'female' ? 10 : 0) + (b.isNatural ? 5 : 0);
+        return bScore - aScore;
       });
 
       setVoices(formatted);
 
-      if (!settings.selectedVoiceName) {
-        const topFemale = formatted.find((v) => v.gender === 'female');
-        if (topFemale) {
-          setSettings((prev) => ({ ...prev, selectedVoiceName: topFemale.name }));
-        } else if (formatted.length > 0) {
-          setSettings((prev) => ({ ...prev, selectedVoiceName: formatted[0].name }));
+      // Keep user's chosen voice if valid; only auto-select if empty or voice no longer exists
+      setSettings((prev) => {
+        if (prev.selectedVoiceName && formatted.some((v) => v.name === prev.selectedVoiceName)) {
+          return prev;
         }
-      }
+        const bestFemale =
+          formatted.find((v) => v.isNatural && v.gender === 'female') ||
+          formatted.find((v) => v.gender === 'female') ||
+          formatted[0];
+        if (bestFemale) {
+          return { ...prev, selectedVoiceName: bestFemale.name };
+        }
+        return prev;
+      });
     };
 
     populateVoices();
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = populateVoices;
     }
-  }, [settings.selectedVoiceName]);
+  }, []);
 
   // Initial Boot Chime
   useEffect(() => {
@@ -361,19 +428,6 @@ export default function App() {
 
       stopSpeech();
 
-      // Ensure we have a conversation ID and session token
-      let conversationId = conversationService.getConversationId();
-      let sessionToken = conversationService.getSessionToken();
-      if (!conversationId || !sessionToken) {
-        try {
-          const session = await conversationService.ensureGuestConversation();
-          conversationId = session.conversationId;
-          sessionToken = session.sessionToken;
-        } catch (err) {
-          console.warn('Failed to create conversation:', err);
-        }
-      }
-
       const userMsg: ChatMessage = {
         id: Math.random().toString(36).substring(2, 9),
         role: 'user',
@@ -382,9 +436,7 @@ export default function App() {
       };
 
       setMessages((prev) => [...prev, userMsg]);
-      if (conversationId && sessionToken) {
-        conversationService.saveChatMessage(conversationId, sessionToken, userMsg);
-      }
+      conversationService.saveChatMessage(userMsg);
       addLog(`[GUEST INPUT]: "${promptText}"`, 'info');
 
       setState('PROCESSING');
@@ -396,6 +448,18 @@ export default function App() {
           text: m.text
         }));
 
+        const effectiveOpenRouterKey = settings.openrouterApiKey?.trim() || '';
+
+        // Construct grounded system instruction
+        let groundedSystemInstruction = settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
+        if (knowledgeFiles.length > 0) {
+          const docsText = knowledgeFiles
+            .map((f, idx) => `--- GROUNDED DOCUMENT ${idx + 1} (${f.category || 'General'}): ${f.name} ---\n${f.content}`)
+            .join('\n\n');
+
+          groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.`;
+        }
+
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
 
         const response = await fetch('/api/chat', {
@@ -405,12 +469,11 @@ export default function App() {
             'Accept': 'application/json'
           },
           body: JSON.stringify({
+            openrouterApiKey: effectiveOpenRouterKey || undefined,
             model: selectedModel,
             prompt: promptText,
             history: historyForApi,
-            systemInstruction: settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION,
-            conversation_id: conversationId,
-            session_token: sessionToken
+            systemInstruction: groundedSystemInstruction
           })
         });
 
@@ -436,9 +499,7 @@ export default function App() {
         };
 
         setMessages((prev) => [...prev, talaMsg]);
-        if (conversationId && sessionToken) {
-          conversationService.saveChatMessage(conversationId, sessionToken, talaMsg);
-        }
+        conversationService.saveChatMessage(talaMsg);
         addLog(`[ TALA RESPONSE DELIVERED ]`, 'success');
         soundEffects.playResponseChime();
 
@@ -459,13 +520,13 @@ export default function App() {
           {
             id: Math.random().toString(36).substring(2, 9),
             role: 'model',
-            text: `[TALA CONCIERGE NOTICE]: ${errorText}`,
+            text: `⚠️ [TALA CONCIERGE NOTICE]: ${errorText}`,
             timestamp: new Date().toLocaleTimeString('en-US', { hour12: false })
           }
         ]);
       }
     },
-    [messages, settings, addLog, speakText, stopSpeech]
+    [messages, settings, addLog, speakText, stopSpeech, knowledgeFiles, currentUser]
   );
 
   // Web Speech Recognition
@@ -531,8 +592,10 @@ export default function App() {
       };
 
       recognition.onend = () => {
-        setState('IDLE');
-        setInterimTranscript('');
+        if (state === 'LISTENING') {
+          setState('IDLE');
+          setInterimTranscript('');
+        }
       };
 
       recognition.start();
@@ -561,48 +624,35 @@ export default function App() {
         category
       };
       setKnowledgeFiles((prev) => [newDoc, ...prev]);
-      knowledgeService.saveDoc(currentUser?.id || 'guest', newDoc);
+      knowledgeService.saveDoc(newDoc);
       addLog(`Added knowledge doc "${file.name}" under ${category}`, 'success');
     };
     reader.readAsText(file);
-  }, [currentUser, addLog]);
+  }, [addLog]);
 
   const handleDeleteKnowledgeFile = useCallback((id: string) => {
     setKnowledgeFiles((prev) => prev.filter((f) => f.id !== id));
-    knowledgeService.deleteDoc(currentUser?.id || 'guest', id);
+    knowledgeService.deleteDoc(id);
     addLog(`Deleted knowledge doc ${id}`, 'info');
-  }, [currentUser, addLog]);
+  }, [addLog]);
 
   // Guest Requests Handlers
   const handleSaveRequest = useCallback(async (req: GuestRequest) => {
-    const newReq = await requestService.saveRequest({
-      title: req.title,
-      description: req.description,
-      category: req.category,
-      guestLabel: req.guestLabel,
-      room: req.room,
-      status: req.status
-    });
-    if (newReq) {
-      setGuestRequests((prev) => [newReq, ...prev]);
-      addLog(`Logged guest request "${req.title}"`, 'success');
-    }
+    const updated = await requestService.saveRequest(req);
+    setGuestRequests(updated);
+    addLog(`Logged guest request "${req.title}"`, 'success');
   }, [addLog]);
 
   const handleUpdateStatus = useCallback(async (id: string, status: GuestRequestStatus) => {
-    const success = await requestService.updateRequestStatus(id, status);
-    if (success) {
-      setGuestRequests((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
-      addLog(`Updated request ${id} status to ${status}`, 'info');
-    }
+    const updated = await requestService.updateRequestStatus(id, status);
+    setGuestRequests(updated);
+    addLog(`Updated request ${id} status to ${status}`, 'info');
   }, [addLog]);
 
   const handleDeleteRequest = useCallback(async (id: string) => {
-    const success = await requestService.deleteRequest(id);
-    if (success) {
-      setGuestRequests((prev) => prev.filter((r) => r.id !== id));
-      addLog(`Deleted request ${id}`, 'info');
-    }
+    const updated = await requestService.deleteRequest(id);
+    setGuestRequests(updated);
+    addLog(`Deleted request ${id}`, 'info');
   }, [addLog]);
 
   return (
@@ -625,7 +675,7 @@ export default function App() {
                 setSettings((prev) => ({ ...prev, continuousListening: !prev.continuousListening }))
               }
               currentUser={currentUser}
-              onLogin={handleLogin}
+              onSignIn={handleSignIn}
               onSignOut={handleSignOut}
               soundEnabled={settings.soundEnabled}
               onToggleSound={() => setSettings((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
@@ -639,7 +689,7 @@ export default function App() {
           element={
             <AdminLayout
               currentUser={currentUser}
-              onLogin={handleLogin}
+              onSignIn={handleSignIn}
               onSignOut={handleSignOut}
             />
           }
@@ -653,7 +703,7 @@ export default function App() {
                 knowledgeFiles={knowledgeFiles}
                 guestRequests={guestRequests}
                 hasServerOpenRouterKey={hasServerOpenRouterKey}
-                hasCustomKey={false}
+                hasCustomKey={Boolean(settings.openrouterApiKey || settings.customApiKey)}
               />
             }
           />
@@ -661,7 +711,12 @@ export default function App() {
           {/* Admin Conversations Inbox */}
           <Route
             path="conversations"
-            element={<AdminConversationsPage />}
+            element={
+              <AdminConversationsPage
+                messages={messages}
+                onSendMessage={sendPromptToTala}
+              />
+            }
           />
 
           {/* Admin Knowledge Base Manager */}
@@ -689,12 +744,6 @@ export default function App() {
             }
           />
 
-          {/* Admin Agents Management */}
-          <Route
-            path="agents"
-            element={<AdminAgentsPage />}
-          />
-
           {/* Admin Settings & Diagnostics */}
           <Route
             path="settings"
@@ -707,7 +756,7 @@ export default function App() {
                 logs={logs}
                 onClearLogs={() => setLogs([])}
                 currentUser={currentUser}
-                onLogin={handleLogin}
+                onSignIn={handleSignIn}
                 onSignOut={handleSignOut}
                 hasServerOpenRouterKey={hasServerOpenRouterKey}
               />
