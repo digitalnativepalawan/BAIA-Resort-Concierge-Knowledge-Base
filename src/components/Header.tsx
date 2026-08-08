@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Settings, Clock, Activity, Radio, Cpu, ShieldCheck, LogIn, LogOut, Database, User as UserIcon } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Clock, LogIn, LogOut, Database, User as UserIcon } from 'lucide-react';
 import { TalaState, TalaSettings, AdminUser } from '../types';
 
 interface HeaderProps {
@@ -40,9 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
     month: 'short',
     day: '2-digit',
     year: 'numeric',
-  })
-    .format(now)
-    .toUpperCase(); // e.g. "FRI, AUG 07, 2026"
+  }).format(now);
 
   // Clock 1: Manila, PH (PHT)
   const manilaTimeStr = new Intl.DateTimeFormat('en-US', {
@@ -71,43 +69,43 @@ export const Header: React.FC<HeaderProps> = ({
   const getStatusBadge = () => {
     if (!isKeyActive) {
       return {
-        label: 'STATUS: OFFLINE // MISSING KEY',
-        dotColor: 'bg-[#ef4444] shadow-[0_0_10px_#ef4444]',
-        textColor: 'text-[#ef4444]',
+        label: 'System Offline // Missing Key',
+        dotColor: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]',
+        textColor: 'text-red-400',
       };
     }
 
     switch (state) {
       case 'LISTENING':
         return {
-          label: 'SYSTEM STATUS: LISTENING',
-          dotColor: 'bg-[#00f0ff] shadow-[0_0_10px_#00f0ff]',
+          label: 'System Status: Listening',
+          dotColor: 'bg-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.5)]',
           textColor: 'text-[#00f0ff]',
         };
       case 'PROCESSING':
         return {
-          label: 'SYSTEM STATUS: PROCESSING',
-          dotColor: 'bg-[#a855f7] shadow-[0_0_10px_#a855f7]',
-          textColor: 'text-[#a855f7]',
+          label: 'System Status: Processing',
+          dotColor: 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.5)]',
+          textColor: 'text-purple-300',
         };
       case 'SPEAKING':
         return {
-          label: 'SYSTEM STATUS: VOCALIZING',
-          dotColor: 'bg-[#10b981] shadow-[0_0_10px_#10b981]',
-          textColor: 'text-[#10b981]',
+          label: 'System Status: Vocalizing',
+          dotColor: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]',
+          textColor: 'text-emerald-400',
         };
       case 'ERROR':
         return {
-          label: 'SYSTEM STATUS: ALERT',
-          dotColor: 'bg-[#ef4444] shadow-[0_0_10px_#ef4444]',
-          textColor: 'text-[#ef4444]',
+          label: 'System Status: Alert',
+          dotColor: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]',
+          textColor: 'text-red-400',
         };
       case 'IDLE':
       default:
         return {
-          label: 'CONNECTED // READY',
-          dotColor: 'bg-[#10b981] shadow-[0_0_10px_#10b981]',
-          textColor: 'text-[#10b981]',
+          label: 'Connected // Ready',
+          dotColor: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]',
+          textColor: 'text-emerald-400',
         };
     }
   };
@@ -116,57 +114,57 @@ export const Header: React.FC<HeaderProps> = ({
   const currentModelLabel = settings.selectedOpenRouterModel || 'openrouter/free';
 
   return (
-    <header className="relative z-20 w-full bg-[#080d1a]/85 border-b border-[#00f0ff]/30 px-4 sm:px-8 py-3.5 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.8),0_0_15px_rgba(0,240,255,0.15)]">
+    <header className="relative z-20 w-full bg-[#0d1b2b]/60 border-b border-[#00f0ff]/20 px-4 sm:px-8 py-3.5 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.5)]">
       <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         
         {/* LEFT COLUMN [Branding & Status] */}
         <div className="md:col-span-4 flex flex-col justify-center items-start gap-1">
           {/* Status Badge Indicator */}
-          <div className="flex items-center gap-2 font-rajdhani">
-            <span className={`w-2.5 h-2.5 rounded-full ${statusInfo.dotColor} animate-pulse`} />
-            <span className={`text-[11px] font-share font-semibold tracking-[0.2em] uppercase ${statusInfo.textColor}`}>
+          <div className="flex items-center gap-2 font-inter">
+            <span className={`w-2 h-2 rounded-full ${statusInfo.dotColor} animate-pulse`} />
+            <span className={`text-[11px] font-medium tracking-wide ${statusInfo.textColor}`}>
               {statusInfo.label}
             </span>
           </div>
 
           {/* App Title & Version Tag */}
           <div className="flex items-center gap-2.5 mt-0.5">
-            <h1 className="text-2xl sm:text-3xl font-orbitron font-extrabold tracking-wider text-white drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]">
+            <h1 className="text-xl sm:text-2xl font-medium tracking-tight text-white">
               TALA<span className="text-[#00f0ff]">.AI</span>
             </h1>
-            <span className="font-share text-[10px] px-2 py-0.5 border border-[#00f0ff]/40 rounded bg-[#00f0ff]/10 text-[#00f0ff] font-semibold tracking-wider uppercase shadow-[0_0_8px_rgba(0,240,255,0.2)]">
-              OPENROUTER // {currentModelLabel.split('/').pop()}
+            <span className="font-inter text-[10px] font-normal px-2 py-0.5 border border-[#00f0ff]/20 rounded-md bg-[#00f0ff]/10 text-cyan-200 tracking-wide">
+              {currentModelLabel.split('/').pop()}
             </span>
           </div>
         </div>
 
         {/* CENTER COLUMN [Dual Digital Telemetry Clocks] */}
         <div className="md:col-span-4 flex flex-col items-center justify-center">
-          <div className="bg-[#030712] border border-[#00f0ff]/50 rounded-xl px-4 py-2 shadow-[0_0_15px_rgba(0,240,255,0.15)] flex flex-col items-center gap-1.5 w-full max-w-md">
+          <div className="bg-[#050b14]/70 border border-[#00f0ff]/20 rounded-xl px-4 py-2 backdrop-blur-md shadow-sm flex flex-col items-center gap-1.5 w-full max-w-md">
             {/* Live UTC Date */}
-            <div className="flex items-center gap-2 text-xs font-share tracking-[0.15em] text-cyan-200 border-b border-[#00f0ff]/30 pb-1 w-full justify-center">
-              <Clock className="w-3.5 h-3.5 text-[#00f0ff] animate-pulse" />
-              <span>UTC DATE: <strong className="text-white font-share font-bold tracking-[0.15em] tabular-nums">{utcDateString}</strong></span>
+            <div className="flex items-center gap-2 text-[11px] font-normal tracking-wide text-cyan-200/90 border-b border-[#00f0ff]/15 pb-1 w-full justify-center">
+              <Clock className="w-3.5 h-3.5 text-[#00f0ff]/80" />
+              <span>UTC Date: <strong className="text-white font-medium tracking-wide tabular-nums">{utcDateString}</strong></span>
             </div>
 
             {/* Dual Timezone Clocks */}
-            <div className="grid grid-cols-2 gap-3 w-full pt-0.5 divide-x divide-[#00f0ff]/30">
+            <div className="grid grid-cols-2 gap-3 w-full pt-0.5 divide-x divide-[#00f0ff]/20">
               {/* Manila Clock */}
               <div className="flex flex-col items-center px-1">
-                <span className="text-[10px] font-orbitron font-bold tracking-[0.18em] text-cyan-300 uppercase">
-                  MANILA, PH (PHT)
+                <span className="text-[10px] font-medium tracking-wide text-cyan-300/80 font-inter">
+                  Manila, PH (PHT)
                 </span>
-                <span className="text-sm sm:text-base font-share font-bold text-white tracking-[0.12em] tabular-nums min-w-[115px] text-center drop-shadow-[0_0_10px_rgba(0,240,255,0.8)] mt-0.5">
+                <span className="text-sm sm:text-base font-share font-semibold text-white tracking-widest tabular-nums min-w-[115px] text-center mt-0.5">
                   {manilaTimeStr}
                 </span>
               </div>
 
               {/* Houston Clock */}
               <div className="flex flex-col items-center px-1">
-                <span className="text-[10px] font-orbitron font-bold tracking-[0.18em] text-cyan-300 uppercase">
-                  HOUSTON, TX (CT)
+                <span className="text-[10px] font-medium tracking-wide text-cyan-300/80 font-inter">
+                  Houston, TX (CT)
                 </span>
-                <span className="text-sm sm:text-base font-share font-bold text-white tracking-[0.12em] tabular-nums min-w-[115px] text-center drop-shadow-[0_0_10px_rgba(0,240,255,0.8)] mt-0.5">
+                <span className="text-sm sm:text-base font-share font-semibold text-white tracking-widest tabular-nums min-w-[115px] text-center mt-0.5">
                   {houstonTimeStr}
                 </span>
               </div>
@@ -175,46 +173,46 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* RIGHT COLUMN [Controls & Metrics] */}
-        <div className="md:col-span-4 flex items-center justify-start md:justify-end gap-3 sm:gap-4">
+        <div className="md:col-span-4 flex items-center justify-start md:justify-end gap-2.5 sm:gap-3">
           {/* Live Telemetry Metrics Badges */}
-          <div className="hidden lg:flex items-center gap-2 font-share text-[10px] uppercase tracking-wider">
-            <div className="flex flex-col items-end px-2 py-1 bg-[#0a0f1d]/80 border border-[#00f0ff]/20 rounded">
-              <span className="text-gray-400 text-[8px]">ENGINE</span>
-              <span className="text-[#00f0ff] font-bold">OPENROUTER</span>
+          <div className="hidden lg:flex items-center gap-2 font-inter text-[10px] tracking-wide">
+            <div className="flex flex-col items-end px-2.5 py-1 bg-[#0a0f1d]/60 border border-[#00f0ff]/15 rounded-lg">
+              <span className="text-gray-400 text-[8px] font-light">Engine</span>
+              <span className="text-[#00f0ff] font-medium">OpenRouter</span>
             </div>
-            <div className="flex flex-col items-end px-2 py-1 bg-[#0a0f1d]/80 border border-[#00f0ff]/20 rounded">
-              <span className="text-gray-400 text-[8px]">LATENCY</span>
-              <span className="text-emerald-400 font-bold">12ms</span>
+            <div className="flex flex-col items-end px-2.5 py-1 bg-[#0a0f1d]/60 border border-[#00f0ff]/15 rounded-lg">
+              <span className="text-gray-400 text-[8px] font-light">Latency</span>
+              <span className="text-emerald-400 font-medium">12ms</span>
             </div>
           </div>
 
-          {/* Action HUD Buttons */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            {/* PocketBase Auth Pill */}
+            {/* Supabase Auth Pill */}
             {currentUser ? (
-              <div className="flex items-center gap-1.5 bg-[#0a0f1d]/90 border border-[#10b981]/50 rounded-lg px-2.5 py-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+              <div className="flex items-center gap-2 bg-[#0d1b2b]/80 border border-emerald-500/30 rounded-xl px-2.5 py-1.5">
                 {currentUser.photoURL ? (
                   <img
                     src={currentUser.photoURL}
                     alt={currentUser.name || 'User'}
-                    className="w-5 h-5 rounded-full border border-[#10b981]"
+                    className="w-5 h-5 rounded-full border border-emerald-400/50"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <UserIcon className="w-4 h-4 text-[#10b981]" />
+                  <UserIcon className="w-4 h-4 text-emerald-400" />
                 )}
-                <div className="hidden sm:flex flex-col text-left font-share leading-none">
-                  <span className="text-[10px] text-[#10b981] font-bold truncate max-w-[90px]">
-                    {currentUser.name || currentUser.email?.split('@')[0] || 'SYNCED'}
+                <div className="hidden sm:flex flex-col text-left font-inter leading-none">
+                  <span className="text-[11px] text-emerald-400 font-medium truncate max-w-[90px]">
+                    {currentUser.name || currentUser.email?.split('@')[0] || 'Synced'}
                   </span>
-                  <span className="text-[8px] text-emerald-400/80 flex items-center gap-0.5">
-                    <Database className="w-2.5 h-2.5" /> POCKETBASE
+                  <span className="text-[8px] text-emerald-400/70 flex items-center gap-0.5 mt-0.5">
+                    <Database className="w-2.5 h-2.5" /> Supabase
                   </span>
                 </div>
                 <button
                   onClick={onSignOut}
                   title="Sign out"
-                  className="p-1 hover:text-[#ef4444] text-gray-400 transition-colors ml-1"
+                  className="p-1 hover:text-red-400 text-gray-400 transition-colors ml-1"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
@@ -222,11 +220,11 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <button
                 onClick={onSignIn}
-                title="Sign in to sync session data with PocketBase"
-                className="px-2.5 py-1.5 rounded-lg bg-[#00f0ff]/10 border border-[#00f0ff]/50 text-[#00f0ff] hover:bg-[#00f0ff]/20 hover:border-[#00f0ff] transition-all flex items-center gap-1.5 font-share text-xs font-bold uppercase tracking-wider"
+                title="Sign in to sync session data with Supabase"
+                className="px-3 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all flex items-center gap-1.5 font-inter text-xs font-medium"
               >
                 <LogIn className="w-3.5 h-3.5 text-[#00f0ff]" />
-                <span className="hidden sm:inline">POCKETBASE</span> LOGIN
+                <span className="hidden sm:inline">Supabase Login</span>
               </button>
             )}
 
@@ -234,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setSettings((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
               title={settings.soundEnabled ? "Mute Audio FX" : "Enable Audio FX"}
-              className="p-2 rounded-lg bg-[#0a0f1d]/90 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-all active:scale-95"
+              className="p-2 rounded-xl bg-[#0d1b2b]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all active:scale-95"
             >
               {settings.soundEnabled ? (
                 <Volume2 className="w-4 h-4 text-[#00f0ff]" />
@@ -243,14 +241,14 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
 
-            {/* CONFIG HUD Drawer Button */}
+            {/* Config Button */}
             <button
               onClick={onOpenSettings}
               title="Open TALA System Settings"
-              className="px-3 py-2 rounded-lg bg-[#0a0f1d]/90 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 hover:border-[#00f0ff] hover:shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-all active:scale-95 flex items-center gap-1.5 font-share text-xs font-bold uppercase tracking-wider"
+              className="px-3 py-2 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all active:scale-95 flex items-center gap-1.5 font-inter text-xs font-medium"
             >
               <Settings className="w-4 h-4 text-[#00f0ff]" />
-              <span>CONFIG</span>
+              <span>Config</span>
             </button>
           </div>
         </div>
@@ -259,3 +257,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+

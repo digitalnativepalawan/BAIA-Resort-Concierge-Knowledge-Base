@@ -11,7 +11,6 @@ interface ConversationStreamProps {
 export const ConversationStream: React.FC<ConversationStreamProps> = ({
   messages,
   onSpeakText,
-  isSpeakingNow
 }) => {
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -27,26 +26,26 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-[#050811]/90 border border-[#00f0ff]/20 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.6)]">
+    <div className="w-full flex-1 flex flex-col bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl overflow-hidden backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-inter">
       {/* Stream Header */}
-      <div className="px-4 py-2.5 bg-[#080d1a] border-b border-[#00f0ff]/20 flex items-center justify-between text-xs font-mono">
+      <div className="px-4 py-3 bg-[#080d1a]/80 border-b border-[#00f0ff]/15 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2 text-[#00f0ff]">
           <Sparkles className="w-3.5 h-3.5 text-[#ff007f]" />
-          <span className="font-semibold uppercase tracking-wider">TACTICAL COMMUNICATOR THREAD</span>
+          <span className="font-medium tracking-wide">Communicator Thread</span>
         </div>
-        <span className="text-gray-400 text-[10px]">{messages.length} TRANSMISSIONS</span>
+        <span className="text-gray-400 text-[11px] font-normal">{messages.length} Transmissions</span>
       </div>
 
       {/* Messages Feed */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-3 max-h-[380px] scrollbar-thin scrollbar-thumb-[#00f0ff]/30">
+      <div className="flex-1 p-4 overflow-y-auto space-y-3.5 max-h-[380px] scrollbar-thin scrollbar-thumb-[#00f0ff]/20">
         {messages.length === 0 ? (
-          <div className="h-48 flex flex-col items-center justify-center text-center p-6 text-gray-400 font-mono text-xs">
-            <div className="w-12 h-12 rounded-full border border-[#00f0ff]/30 flex items-center justify-center mb-3 text-[#00f0ff]/60 bg-[#00f0ff]/5">
-              <Bot className="w-6 h-6" />
+          <div className="h-44 flex flex-col items-center justify-center text-center p-6 text-gray-400 text-xs">
+            <div className="w-10 h-10 rounded-xl border border-[#00f0ff]/20 flex items-center justify-center mb-2 text-[#00f0ff]/70 bg-[#00f0ff]/5">
+              <Bot className="w-5 h-5" />
             </div>
-            <p className="text-[#00f0ff] font-semibold mb-1">[ TALA AI ONLINE ]</p>
-            <p className="max-w-xs text-gray-400 text-[11px]">
-              Tap the Arc Reactor core or click the microphone to initiate voice input, or type a query below.
+            <p className="text-[#00f0ff] font-medium mb-1">TALA Assistant Ready</p>
+            <p className="max-w-xs text-gray-400 text-[11px] font-normal leading-relaxed">
+              Tap the Arc Reactor core, click the microphone, or type a request below to get started.
             </p>
           </div>
         ) : (
@@ -58,27 +57,27 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
                 className={`flex flex-col ${isTala ? 'items-start' : 'items-end'} w-full animate-fadeIn`}
               >
                 {/* Sender badge */}
-                <div className="flex items-center gap-1.5 mb-1 text-[10px] font-mono text-gray-400">
+                <div className="flex items-center gap-1.5 mb-1 text-[11px] font-normal text-gray-400">
                   {isTala ? (
                     <>
                       <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]" />
-                      <span className="text-[#00f0ff] font-bold">TALA AI</span>
+                      <span className="text-[#00f0ff] font-medium">TALA AI</span>
                     </>
                   ) : (
                     <>
-                      <span className="text-gray-300 font-semibold">USER COMMAND</span>
+                      <span className="text-gray-300 font-medium">Guest Command</span>
                       <User className="w-3 h-3 text-[#ff007f]" />
                     </>
                   )}
-                  <span className="text-gray-500">[{msg.timestamp}]</span>
+                  <span className="text-gray-500 font-mono text-[10px]">[{msg.timestamp}]</span>
                 </div>
 
                 {/* Message Bubble */}
                 <div
-                  className={`relative max-w-[85%] sm:max-w-[78%] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-sans leading-relaxed shadow-lg ${
+                  className={`relative max-w-[85%] sm:max-w-[78%] px-4 py-3 rounded-2xl text-xs sm:text-sm font-normal leading-relaxed shadow-md ${
                     isTala
-                      ? 'bg-[#0a1124] border border-[#00f0ff]/40 text-gray-100 rounded-tl-none shadow-[0_0_15px_rgba(0,240,255,0.08)]'
-                      : 'bg-gradient-to-r from-[#ff007f]/20 to-[#8000ff]/20 border border-[#ff007f]/40 text-white rounded-tr-none'
+                      ? 'bg-[#0a1124]/90 border border-[#00f0ff]/25 text-gray-100 rounded-tl-none shadow-sm'
+                      : 'bg-gradient-to-r from-[#ff007f]/15 to-[#8000ff]/15 border border-[#ff007f]/30 text-white rounded-tr-none'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">
@@ -90,7 +89,7 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
                             href={part}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#00f0ff] underline font-mono font-bold hover:text-white transition-colors"
+                            className="text-[#00f0ff] underline font-medium hover:text-white transition-colors"
                           >
                             {part}
                           </a>
@@ -102,29 +101,29 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
 
                   {/* Message Action Controls */}
                   {isTala && (
-                    <div className="flex items-center justify-end gap-2 mt-2 pt-1.5 border-t border-[#00f0ff]/15 text-[10px] font-mono">
+                    <div className="flex items-center justify-end gap-2 mt-2 pt-1.5 border-t border-[#00f0ff]/10 text-[11px] font-normal">
                       <button
                         onClick={() => onSpeakText(msg.text)}
-                        title="Vocalize this response"
-                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] transition-colors"
+                        title="Vocalize response"
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] transition-colors"
                       >
                         <Volume2 className="w-3 h-3" />
-                        <span>SPEAK</span>
+                        <span>Speak</span>
                       </button>
                       <button
                         onClick={() => handleCopy(msg.id, msg.text)}
                         title="Copy text to clipboard"
-                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gray-800/80 hover:bg-gray-700/80 text-gray-300 transition-colors"
                       >
                         {copiedId === msg.id ? (
                           <>
                             <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-emerald-400">COPIED</span>
+                            <span className="text-emerald-400 font-medium">Copied</span>
                           </>
                         ) : (
                           <>
                             <Copy className="w-3 h-3" />
-                            <span>COPY</span>
+                            <span>Copy</span>
                           </>
                         )}
                       </button>
@@ -140,3 +139,4 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
     </div>
   );
 };
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Sparkles, Check, DollarSign, Layers, ArrowUpDown, Filter, ShieldCheck } from 'lucide-react';
+import { Search, Sparkles, Check, ShieldCheck } from 'lucide-react';
 import { OpenRouterModel } from '../types';
 
 interface OpenRouterModelSelectorProps {
@@ -103,51 +103,51 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
   }, [models, searchQuery, tabFilter, sortBy]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-inter">
       {/* Selected Model Highlight Card */}
-      <div className="p-3.5 rounded-xl bg-[#030712] border border-[#00f0ff]/40 shadow-[0_0_20px_rgba(0,240,255,0.15)] relative overflow-hidden">
-        <div className="flex items-start justify-between gap-2">
+      <div className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/30 shadow-sm relative overflow-hidden backdrop-blur-md">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold text-[#00f0ff] uppercase tracking-wider">
-                CURRENT ACTIVE MODEL
+              <span className="text-[11px] font-medium text-[#00f0ff] tracking-wide">
+                Current Active Model
               </span>
               {selectedModel.is_free ? (
-                <span className="px-2 py-0.5 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/40 rounded">
+                <span className="px-2 py-0.5 text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-md">
                   FREE
                 </span>
               ) : (
-                <span className="px-2 py-0.5 text-[9px] font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/40 rounded">
+                <span className="px-2 py-0.5 text-[10px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-md">
                   PAID
                 </span>
               )}
             </div>
-            <h4 className="text-sm font-share font-bold text-white mt-1">
+            <h4 className="text-base font-medium text-white mt-1">
               {selectedModel.name}
             </h4>
-            <p className="text-[11px] font-mono text-cyan-300/80">
+            <p className="text-xs text-cyan-200/70 font-mono mt-0.5">
               {selectedModel.id}
             </p>
           </div>
           <ShieldCheck className="w-5 h-5 text-[#00f0ff] shrink-0" />
         </div>
 
-        <div className="mt-3 pt-2 border-t border-[#00f0ff]/20 grid grid-cols-3 gap-2 text-[10px] font-mono">
+        <div className="mt-3 pt-3 border-t border-[#00f0ff]/15 grid grid-cols-3 gap-3 text-xs">
           <div>
-            <span className="text-gray-400 block">CONTEXT:</span>
-            <span className="text-gray-200 font-bold">
+            <span className="text-gray-400 block font-normal text-[11px]">Context</span>
+            <span className="text-white font-medium">
               {selectedModel.context_length ? `${Math.round(selectedModel.context_length / 1024)}k tokens` : '128k tokens'}
             </span>
           </div>
           <div>
-            <span className="text-gray-400 block">INPUT:</span>
-            <span className="text-gray-200 font-bold">
+            <span className="text-gray-400 block font-normal text-[11px]">Input</span>
+            <span className="text-white font-medium">
               {formatPrice(selectedModel.pricing?.prompt)}
             </span>
           </div>
           <div>
-            <span className="text-gray-400 block">OUTPUT:</span>
-            <span className="text-gray-200 font-bold">
+            <span className="text-gray-400 block font-normal text-[11px]">Output</span>
+            <span className="text-white font-medium">
               {formatPrice(selectedModel.pricing?.completion)}
             </span>
           </div>
@@ -155,17 +155,17 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
       </div>
 
       {/* Search & Tabs Controls */}
-      <div className="space-y-2.5">
-        <div className="flex items-center gap-2">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search model or provider (e.g. llama, claude, free)..."
-              className="w-full pl-8 pr-3 py-2 bg-[#080d1a] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-lg text-xs font-mono text-white placeholder-gray-500 focus:outline-none"
+              className="w-full pl-9 pr-3.5 py-2 bg-[#050b14]/80 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl text-xs text-white placeholder:text-gray-500 focus:outline-none transition-colors"
             />
           </div>
 
@@ -173,7 +173,7 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-2.5 py-2 bg-[#080d1a] border border-[#00f0ff]/30 rounded-lg text-xs font-mono text-cyan-300 focus:outline-none focus:border-[#00f0ff]"
+            className="px-3 py-2 bg-[#050b14]/80 border border-[#00f0ff]/20 rounded-xl text-xs text-cyan-200 focus:outline-none focus:border-[#00f0ff]/50 transition-colors"
           >
             <option value="context">Sort: Context</option>
             <option value="name">Sort: Name</option>
@@ -182,58 +182,58 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
         </div>
 
         {/* Tab Filters */}
-        <div className="flex items-center justify-between gap-1 bg-[#030712] p-1 rounded-lg border border-[#00f0ff]/20">
+        <div className="flex items-center justify-between gap-1 bg-[#050b14]/80 p-1 rounded-xl border border-[#00f0ff]/15">
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setTabFilter('ALL')}
-              className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 tabFilter === 'ALL'
-                  ? 'bg-[#00f0ff] text-slate-950 shadow-[0_0_10px_rgba(0,240,255,0.3)]'
+                  ? 'bg-[#00f0ff] text-slate-950 font-semibold'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              ALL
+              All Models
             </button>
             <button
               type="button"
               onClick={() => setTabFilter('FREE')}
-              className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 tabFilter === 'FREE'
-                  ? 'bg-[#10b981] text-slate-950 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                  ? 'bg-emerald-400 text-slate-950 font-semibold'
                   : 'text-gray-400 hover:text-emerald-400'
               }`}
             >
-              FREE ONLY
+              Free Only
             </button>
             <button
               type="button"
               onClick={() => setTabFilter('PAID')}
-              className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 tabFilter === 'PAID'
-                  ? 'bg-amber-400 text-slate-950 shadow-[0_0_10px_rgba(251,191,36,0.3)]'
+                  ? 'bg-amber-400 text-slate-950 font-semibold'
                   : 'text-gray-400 hover:text-amber-300'
               }`}
             >
-              PAID ONLY
+              Paid Only
             </button>
           </div>
 
-          <span className="text-[10px] font-mono text-gray-400 pr-2">
+          <span className="text-xs text-gray-400 pr-3 font-normal">
             {filteredModels.length} models
           </span>
         </div>
       </div>
 
       {/* Model List Catalog Container */}
-      <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar border border-[#00f0ff]/20 rounded-xl p-2 bg-[#050811]">
+      <div className="max-h-60 overflow-y-auto space-y-2 pr-1 border border-[#00f0ff]/15 rounded-xl p-2 bg-[#050b14]/60">
         {loading ? (
-          <div className="py-8 text-center text-xs font-mono text-[#00f0ff] flex items-center justify-center gap-2">
+          <div className="py-8 text-center text-xs text-[#00f0ff] flex items-center justify-center gap-2">
             <Sparkles className="w-4 h-4 animate-spin" />
             <span>Loading live OpenRouter catalog...</span>
           </div>
         ) : filteredModels.length === 0 ? (
-          <div className="py-6 text-center text-xs font-mono text-gray-400">
+          <div className="py-6 text-center text-xs text-gray-400 font-normal">
             No models found matching "{searchQuery}"
           </div>
         ) : (
@@ -243,42 +243,42 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
               <div
                 key={m.id}
                 onClick={() => onSelectModel(m.id)}
-                className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
                   isSelected
-                    ? 'bg-[#00f0ff]/15 border-[#00f0ff] text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
-                    : 'bg-[#080d1a] border-[#00f0ff]/20 hover:border-[#00f0ff]/50 text-gray-300'
+                    ? 'bg-[#00f0ff]/15 border-[#00f0ff] text-white shadow-sm'
+                    : 'bg-[#080d1a]/80 border-[#00f0ff]/15 hover:border-[#00f0ff]/35 text-gray-300'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-share font-bold text-white truncate">
+                      <span className="text-xs font-medium text-white truncate">
                         {m.name}
                       </span>
                       {m.is_free ? (
-                        <span className="px-1.5 py-0.2 text-[8px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded shrink-0">
+                        <span className="px-1.5 py-0.5 text-[9px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-md shrink-0">
                           FREE
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.2 text-[8px] font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded shrink-0">
+                        <span className="px-1.5 py-0.5 text-[9px] font-medium text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-md shrink-0">
                           PAID
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-mono text-cyan-300/70 block truncate mt-0.5">
+                    <span className="text-[11px] font-mono text-cyan-200/70 block truncate mt-0.5">
                       {m.id}
                     </span>
                   </div>
                   {isSelected && (
                     <div className="w-5 h-5 rounded-full bg-[#00f0ff] text-slate-950 flex items-center justify-center shrink-0">
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                     </div>
                   )}
                 </div>
 
-                <div className="mt-2 pt-1.5 border-t border-[#00f0ff]/10 flex items-center justify-between text-[9px] font-mono text-gray-400">
-                  <span>CTX: {Math.round((m.context_length || 0) / 1024)}k</span>
-                  <div className="flex items-center gap-2">
+                <div className="mt-2.5 pt-2 border-t border-[#00f0ff]/10 flex items-center justify-between text-[11px] text-gray-400 font-normal">
+                  <span>Context: {Math.round((m.context_length || 0) / 1024)}k</span>
+                  <div className="flex items-center gap-2.5">
                     <span>In: {formatPrice(m.pricing?.prompt)}</span>
                     <span>Out: {formatPrice(m.pricing?.completion)}</span>
                   </div>
@@ -288,7 +288,7 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
           })
         )}
       </div>
-      {error && <p className="text-[10px] font-mono text-amber-400">{error}</p>}
+      {error && <p className="text-xs text-amber-400">{error}</p>}
     </div>
   );
 };

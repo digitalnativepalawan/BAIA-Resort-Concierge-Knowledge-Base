@@ -226,15 +226,26 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
             </filter>
           </defs>
 
-          {/* Outer Segmented Ring */}
+          {/* Outer Segmented Precision Ring */}
           <circle
             cx="120"
             cy="120"
             r="108"
             fill="none"
             strokeDasharray="18 8 36 8 8 8"
-            strokeWidth="2.5"
+            strokeWidth="1.5"
             className={`${getOuterRingClass()} origin-center transition-all duration-300`}
+          />
+
+          {/* Thin Outer Fine Guide Ring */}
+          <circle
+            cx="120"
+            cy="120"
+            r="102"
+            fill="none"
+            stroke="#00f0ff"
+            strokeOpacity="0.15"
+            strokeWidth="0.75"
           />
 
           {/* Middle Precision Tick Ring */}
@@ -244,23 +255,34 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
             r="92"
             fill="none"
             stroke="#00f0ff"
-            strokeOpacity="0.25"
-            strokeWidth="1"
+            strokeOpacity="0.2"
+            strokeWidth="0.75"
             strokeDasharray="3 3"
           />
 
-          {/* Counter Rotating Inner Ring with Notch Marks */}
+          {/* Counter Rotating Inner Ring with Fine Notch Marks */}
           <circle
             cx="120"
             cy="120"
             r="78"
             fill="none"
-            strokeDasharray="40 12 15 12"
-            strokeWidth="3"
+            strokeDasharray="30 10 12 10"
+            strokeWidth="1.75"
             className={`${getInnerRingClass()} origin-center transition-all duration-300`}
           />
 
-          {/* Hexagonal Node Markers on HUD */}
+          {/* Innermost Precision Core Orbit Ring */}
+          <circle
+            cx="120"
+            cy="120"
+            r="68"
+            fill="none"
+            stroke="#00f0ff"
+            strokeOpacity="0.12"
+            strokeWidth="0.75"
+          />
+
+          {/* Node Markers on HUD */}
           {[0, 60, 120, 180, 240, 300].map((angle, i) => {
             const rad = (angle * Math.PI) / 180;
             const x = 120 + Math.cos(rad) * 92;
@@ -270,7 +292,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
                 key={i}
                 cx={x}
                 cy={y}
-                r="3"
+                r="2.2"
                 fill={state === 'PROCESSING' ? '#ff007f' : '#00f0ff'}
                 className="transition-colors duration-300"
               />
@@ -278,10 +300,10 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
           })}
 
           {/* Target Reticle Crosshairs */}
-          <line x1="120" y1="20" x2="120" y2="32" stroke="#00f0ff" strokeWidth="1.5" strokeOpacity="0.6" />
-          <line x1="120" y1="208" x2="120" y2="220" stroke="#00f0ff" strokeWidth="1.5" strokeOpacity="0.6" />
-          <line x1="20" y1="120" x2="32" y2="120" stroke="#00f0ff" strokeWidth="1.5" strokeOpacity="0.6" />
-          <line x1="208" y1="120" x2="220" y2="120" stroke="#00f0ff" strokeWidth="1.5" strokeOpacity="0.6" />
+          <line x1="120" y1="18" x2="120" y2="30" stroke="#00f0ff" strokeWidth="1" strokeOpacity="0.5" />
+          <line x1="120" y1="210" x2="120" y2="222" stroke="#00f0ff" strokeWidth="1" strokeOpacity="0.5" />
+          <line x1="18" y1="120" x2="30" y2="120" stroke="#00f0ff" strokeWidth="1" strokeOpacity="0.5" />
+          <line x1="210" y1="120" x2="222" y2="120" stroke="#00f0ff" strokeWidth="1" strokeOpacity="0.5" />
         </svg>
 
         {/* Interactive Arc Reactor Core Trigger */}
@@ -301,7 +323,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
             
             {/* Core Symbol / State Display */}
             <div className="flex flex-col items-center justify-center text-center p-2 z-30">
-              <span className="text-[10px] font-mono tracking-widest text-[#00f0ff] uppercase opacity-90 mb-0.5 font-bold">
+              <span className="text-[10px] font-inter tracking-wider text-[#00f0ff] opacity-90 mb-0.5 font-medium">
                 {state === 'IDLE' && 'Ready'}
                 {state === 'LISTENING' && 'Listening...'}
                 {state === 'PROCESSING' && 'Thinking...'}
@@ -322,13 +344,13 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
                     <span className="w-1 bg-[#ff007f] animate-[bounce_0.6s_infinite_300ms]" style={{ height: `${30 + speechVolume * 70}%` }} />
                   </div>
                 ) : (
-                  <div className="w-6 h-6 rounded-full border-2 border-[#00f0ff] flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <div className="w-6 h-6 rounded-full border border-[#00f0ff] flex items-center justify-center group-hover:scale-110 transition-transform">
                     <div className="w-2 h-2 rounded-full bg-[#00f0ff] shadow-[0_0_8px_#00f0ff]" />
                   </div>
                 )}
               </div>
 
-              <span className="text-[10px] font-sans font-semibold text-[#00f0ff]/90 group-hover:text-[#00f0ff] uppercase tracking-wider">
+              <span className="text-[10px] font-inter font-medium text-[#00f0ff]/90 group-hover:text-[#00f0ff] tracking-wide">
                 {state === 'LISTENING' ? 'Speak Now' : 'Talk to TALA'}
               </span>
             </div>
@@ -336,7 +358,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
         </button>
 
         {/* Orbiting HUD Status Tags */}
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-[#050811]/90 border border-[#00f0ff]/40 shadow-[0_0_15px_rgba(0,240,255,0.2)] text-[10px] font-sans text-[#00f0ff] font-bold tracking-wider whitespace-nowrap">
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-[#0d1b2b]/80 border border-[#00f0ff]/25 backdrop-blur-md shadow-sm text-xs font-inter text-cyan-200 font-medium tracking-wide whitespace-nowrap">
           {state === 'IDLE' && 'TALA • Ready'}
           {state === 'LISTENING' && 'TALA • Listening'}
           {state === 'PROCESSING' && 'TALA • Thinking'}

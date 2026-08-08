@@ -136,18 +136,18 @@ export default function App() {
     setLogs((prev) => [...prev.slice(-40), newEntry]);
   }, []);
 
-  // PocketBase Auth Initializer
+  // Supabase Auth Initializer
   useEffect(() => {
     const unsubscribe = authService.subscribeToAuth(async (user) => {
       setCurrentUser(user);
       if (user) {
-        addLog(`[ POCKETBASE ]: Authenticated as ${user.name || user.email}`, 'success');
+        addLog(`[ SUPABASE ]: Authenticated as ${user.name || user.email}`, 'success');
         const remoteSettings = await settingsService.getSettings();
         if (remoteSettings) {
           setSettings((prev) => ({ ...prev, ...remoteSettings }));
         }
       } else {
-        addLog('[ POCKETBASE ]: PocketBase client active', 'info');
+        addLog('[ SUPABASE ]: Supabase client active', 'info');
       }
     });
 
@@ -181,7 +181,7 @@ export default function App() {
     };
   }, []);
 
-  // Sync settings to PocketBase
+  // Sync settings to Supabase
   useEffect(() => {
     if (currentUser) {
       settingsService.saveSettings(settings);
@@ -191,17 +191,17 @@ export default function App() {
   const handleSignIn = useCallback(async () => {
     try {
       soundEffects.playProcessingBeep();
-      const email = window.prompt('Enter PocketBase Admin/Staff Email:', 'admin@baiaresort.com');
+      const email = window.prompt('Enter Supabase Admin/Staff Email:', 'admin@baiaresort.com');
       if (!email) return;
-      const pass = window.prompt('Enter PocketBase Password:');
+      const pass = window.prompt('Enter Supabase Password:');
       if (!pass) return;
 
       const user = await authService.login(email, pass);
       setCurrentUser(user);
-      addLog(`[ POCKETBASE ]: Logged in as ${user.email}`, 'success');
+      addLog(`[ SUPABASE ]: Logged in as ${user.email}`, 'success');
       soundEffects.playResponseChime();
     } catch (err: any) {
-      addLog(`PocketBase Auth error: ${err.message || err}`, 'error');
+      addLog(`Supabase Auth error: ${err.message || err}`, 'error');
       soundEffects.playErrorSound();
     }
   }, [addLog]);
@@ -210,7 +210,7 @@ export default function App() {
     try {
       await authService.logoutUser();
       setCurrentUser(null);
-      addLog('[ POCKETBASE ]: Logged out.', 'info');
+      addLog('[ SUPABASE ]: Logged out.', 'info');
       soundEffects.playProcessingBeep();
     } catch (err: any) {
       addLog(`Logout error: ${err.message || err}`, 'error');

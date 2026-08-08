@@ -1,77 +1,89 @@
 import { ChatMessage, ConversationSession } from '../types';
-import { pb } from '../lib/pocketbase';
+import { supabase, isSupabaseConfigured, localCache } from '../lib/supabase';
 
-const MESSAGES_COLLECTION = 'messages';
-const CONVERSATIONS_COLLECTION = 'conversations';
+const MESSAGES_TABLE = 'messages';
 
 export const conversationService = {
-  saveChatMessage: async (message: ChatMessage, conversationId = 'default_guest_session'): Promise<void> => {
-    try {
-      if (pb.authStore.isValid || true) { // Allow guest saves if collection rules permit or via backend
-        try {
-          await pb.collection(MESSAGES_COLLECTION).create({
-            role: message.role,
-            content: message.text,
-            agent_id: 'tala-concierge',
-            timestamp: message.timestamp,
-            conversation: conversationId
-          });
-        } catch (err) {
-          console.warn('PocketBase save message notice:', err);
-        }
+  saveChatMessage: async (message: ChatMessage, userId?: string): Promise<void> => {
+    // Save to local cache first
+    const existing = localCache.get<ChatMessage[]>('messages', []);
+    const updated = [...existing.filter((m) => m.id !== message.id), message];
+    localCache.set('messages', updated);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from(MESSAGES_TABLE).insert({
+          id: message.id && message.id.length > 10 ? message.id : undefined,
+          content: message.text,
+          role: message.role,
+          user_id: userId || null,
+          created_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Supabase save message notice:', err);
       }
-    } catch (e) {
-      console.warn('Failed to save message to PocketBase:', e);
     }
   },
 
-  listenChatMessages: (callback: (messages: ChatMessage[]) => void, conversationId = 'default_guest_session') => {
-    try {
-      // Fetch initial list
-      pb.collection(MESSAGES_COLLECTION)
-        .getList(1, 100, {
-          sort: 'created',
-          filter: `conversation = "${conversationId}"`
-        })
-        .then((res) => {
-          if (res.items.length > 0) {
-            const formatted: ChatMessage[] = res.items.map((item) => ({
+  listenChatMessages: (callback: (messages: ChatMessage[]) => void) => {
+    // Deliver local cached messages immediately
+    const cached = localCache.get<ChatMessage[]>('messages', []);
+    if (cached.length > 0) {
+      callback(cached);
+    }
+
+    if (!isSupabaseConfigured()) {
+      return () => {};
+    }
+
+    // Fetch initial list from Supabase
+    supabase
+      .from(MESSAGES_TABLE)
+      .select('*')
+      .order('created_at', { ascending: true })
+      .limit(100)
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          const formatted: ChatMessage[] = data.map((item) => ({
+            id: item.id,
+            role: item.role as 'user' | 'model',
+            text: item.content,
+            timestamp: new Date(item.created_at).toLocaleTimeString('en-US', { hour12: false }),
+          }));
+          localCache.set('messages', formatted);
+          callback(formatted);
+        }
+      });
+
+    // Subscribe to real-time additions via Supabase Channel
+    const channel = supabase
+      .channel('public:messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: MESSAGES_TABLE },
+        (payload) => {
+          const item = payload.new;
+          if (item) {
+            const newMsg: ChatMessage = {
               id: item.id,
               role: item.role as 'user' | 'model',
               text: item.content,
-              timestamp: item.timestamp || new Date(item.created).toLocaleTimeString('en-US', { hour12: false })
-            }));
-            callback(formatted);
-          }
-        })
-        .catch(() => {});
-
-      // Subscribe to real-time additions
-      let unsubscribeFn: (() => void) | null = null;
-      pb.collection(MESSAGES_COLLECTION)
-        .subscribe('*', (e) => {
-          if (e.action === 'create') {
-            const newMsg: ChatMessage = {
-              id: e.record.id,
-              role: e.record.role as 'user' | 'model',
-              text: e.record.content,
-              timestamp: e.record.timestamp || new Date(e.record.created).toLocaleTimeString('en-US', { hour12: false })
+              timestamp: new Date(item.created_at).toLocaleTimeString('en-US', { hour12: false }),
             };
-            callback([newMsg]);
+            const currentCache = localCache.get<ChatMessage[]>('messages', []);
+            if (!currentCache.some((m) => m.id === newMsg.id)) {
+              const nextCache = [...currentCache, newMsg];
+              localCache.set('messages', nextCache);
+              callback(nextCache);
+            }
           }
-        })
-        .then((unsub) => {
-          unsubscribeFn = unsub;
-        })
-        .catch(() => {});
+        }
+      )
+      .subscribe();
 
-      return () => {
-        if (unsubscribeFn) unsubscribeFn();
-        pb.collection(MESSAGES_COLLECTION).unsubscribe('*').catch(() => {});
-      };
-    } catch (e) {
-      return () => {};
-    }
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   formatMessagesToSessions: (messages: ChatMessage[], guestLabel = 'Guest (Main Villa)'): ConversationSession[] => {
@@ -95,8 +107,8 @@ export const conversationService = {
         lastTimestamp: lastMsg.timestamp,
         status: needsStaff ? 'needs_staff' : 'active',
         messageCount: messages.length,
-        messages
-      }
+        messages,
+      },
     ];
-  }
+  },
 };

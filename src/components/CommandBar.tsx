@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, MicOff, Send, Sparkles, Terminal, Square } from 'lucide-react';
+import { Mic, MicOff, Send, Terminal, Square } from 'lucide-react';
 import { TalaState } from '../types';
 
 interface CommandBarProps {
@@ -29,11 +29,11 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   };
 
   const quickPrompts = [
-    "System Status Report",
-    "Tactical Briefing",
-    "Security Overview",
+    "System status report",
+    "Tactical briefing",
+    "Security overview",
     "Who is TALA?",
-    "Voice Diagnostic"
+    "Voice diagnostic"
   ];
 
   const isListening = state === 'LISTENING';
@@ -41,19 +41,19 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   const isProcessing = state === 'PROCESSING';
 
   return (
-    <div className="w-full flex flex-col gap-2.5">
+    <div className="w-full flex flex-col gap-3 font-inter">
       {/* Quick Tactical Action Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px] font-mono">
-        <span className="text-gray-500 shrink-0 flex items-center gap-1 mr-1">
-          <Terminal className="w-3 h-3 text-[#00f0ff]" />
-          <span>TACTICS:</span>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <span className="text-gray-400 shrink-0 flex items-center gap-1.5 mr-1 text-xs font-medium">
+          <Terminal className="w-3.5 h-3.5 text-[#00f0ff]" />
+          <span>Tactics:</span>
         </span>
         {quickPrompts.map((prompt, idx) => (
           <button
             key={idx}
             onClick={() => onSendPrompt(prompt)}
             disabled={isProcessing}
-            className="shrink-0 px-2.5 py-1 rounded-full bg-[#080d1a] hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 text-[#00f0ff] hover:border-[#00f0ff] transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+            className="shrink-0 px-3 py-1.5 rounded-xl bg-[#0d1b2b]/60 hover:bg-[#00f0ff]/15 border border-[#00f0ff]/20 text-cyan-200 hover:text-white transition-all text-xs font-normal disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
           >
             {prompt}
           </button>
@@ -61,22 +61,22 @@ export const CommandBar: React.FC<CommandBarProps> = ({
       </div>
 
       {/* Primary Input Bar */}
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2.5">
         {/* Voice Trigger Button */}
         <button
           type="button"
           onClick={onMicToggle}
           title={isListening ? "Stop Listening" : "Start Voice Input"}
-          className={`relative p-3 rounded-xl border flex items-center justify-center transition-all shadow-lg shrink-0 ${
+          className={`relative p-2.5 rounded-xl border flex items-center justify-center transition-all shrink-0 ${
             isListening
-              ? 'bg-[#ff007f] border-[#ff007f] text-white shadow-[0_0_20px_#ff007f] animate-pulse'
-              : 'bg-[#080d1a] border-[#00f0ff]/50 text-[#00f0ff] hover:border-[#00f0ff] hover:bg-[#00f0ff]/10'
+              ? 'bg-[#ff007f] border-[#ff007f] text-white shadow-[0_0_15px_rgba(255,0,127,0.5)] animate-pulse'
+              : 'bg-[#0d1b2b]/70 border-[#00f0ff]/30 text-[#00f0ff] hover:border-[#00f0ff]/60 hover:bg-[#00f0ff]/10'
           }`}
         >
           {isListening ? (
-            <MicOff className="w-5 h-5 animate-bounce" />
+            <MicOff className="w-4 h-4 animate-bounce" />
           ) : (
-            <Mic className="w-5 h-5" />
+            <Mic className="w-4 h-4" />
           )}
         </button>
 
@@ -86,10 +86,10 @@ export const CommandBar: React.FC<CommandBarProps> = ({
             type="button"
             onClick={onStopSpeech}
             title="Stop Vocalization"
-            className="px-3 py-3 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 hover:bg-amber-500/30 font-mono text-xs flex items-center gap-1.5 shrink-0 animate-pulse"
+            className="px-3 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 text-xs font-medium flex items-center gap-1.5 shrink-0 animate-pulse"
           >
-            <Square className="w-4 h-4 fill-amber-300" />
-            <span className="hidden sm:inline">MUTE VOCAL</span>
+            <Square className="w-3.5 h-3.5 fill-amber-300" />
+            <span className="hidden sm:inline">Mute Vocal</span>
           </button>
         )}
 
@@ -105,7 +105,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
                 : "Type command for TALA or click mic..."
             }
             disabled={isProcessing}
-            className="w-full px-4 py-3 bg-[#050811]/90 border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl text-xs sm:text-sm font-mono text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#00f0ff] shadow-inner transition-colors"
+            className="w-full px-4 py-2.5 bg-[#050b14]/70 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl text-xs sm:text-sm font-inter text-gray-100 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-[#00f0ff]/30 backdrop-blur-md transition-colors"
           />
         </div>
 
@@ -113,32 +113,33 @@ export const CommandBar: React.FC<CommandBarProps> = ({
         <button
           type="submit"
           disabled={!inputText.trim() || isProcessing}
-          className="p-3 bg-gradient-to-r from-[#00f0ff] to-[#00a2ff] hover:from-[#00f0ff] hover:to-[#ff007f] disabled:from-gray-800 disabled:to-gray-800 text-slate-950 disabled:text-gray-500 font-bold rounded-xl flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-[0_0_15px_rgba(0,240,255,0.3)] active:scale-95"
+          className="p-2.5 bg-gradient-to-r from-[#00f0ff] to-[#00a2ff] hover:from-[#00f0ff] hover:to-[#ff007f] disabled:from-gray-800 disabled:to-gray-800 text-slate-950 disabled:text-gray-500 font-medium rounded-xl flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 active:scale-95 shadow-sm"
         >
-          <Send className="w-5 h-5" />
+          <Send className="w-4 h-4" />
         </button>
       </form>
 
       {/* Auto-Listen & Continuous Mode Toggle */}
-      <div className="flex items-center justify-between px-1 text-[11px] font-mono text-gray-400">
+      <div className="flex items-center justify-between px-1 text-[11px] font-inter font-normal text-gray-400">
         <label className="flex items-center gap-2 cursor-pointer select-none group">
           <input
             type="checkbox"
             checked={continuousListening}
             onChange={onToggleContinuousListening}
-            className="w-3.5 h-3.5 rounded border-[#00f0ff] text-[#00f0ff] focus:ring-0 bg-[#050811] cursor-pointer"
+            className="w-3.5 h-3.5 rounded border-[#00f0ff]/40 text-[#00f0ff] focus:ring-0 bg-[#050811] cursor-pointer"
           />
-          <span className="group-hover:text-[#00f0ff] transition-colors flex items-center gap-1.5">
+          <span className="group-hover:text-cyan-200 transition-colors flex items-center gap-1.5">
             <span>Auto-Listen Loop (Hands-Free Voice)</span>
             {continuousListening && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 animate-pulse font-bold">
-                ● ACTIVE
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/30 font-medium animate-pulse">
+                Active
               </span>
             )}
           </span>
         </label>
-        <span className="text-[#00f0ff]/60 hidden sm:inline">VOICE ENGINE: WEB SPEECH API</span>
+        <span className="text-gray-400/80 font-light hidden sm:inline">Voice Engine: Web Speech API</span>
       </div>
     </div>
   );
 };
+

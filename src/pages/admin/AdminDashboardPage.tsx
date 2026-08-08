@@ -43,27 +43,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const isAiConnected = hasServerOpenRouterKey || hasCustomKey;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 font-inter">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#080d1a] border border-[#00f0ff]/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(0,240,255,0.08)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 backdrop-blur-md shadow-sm">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse" />
-            <span className="text-xs font-mono text-emerald-400 font-bold uppercase tracking-widest">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-medium text-emerald-400 tracking-wide">
               SYSTEM ONLINE
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+          <h1 className="text-2xl sm:text-3xl font-medium text-white mt-1 tracking-tight">
             TALA <span className="text-[#00f0ff]">Resort Concierge</span>
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Real-time overview of guest inquiries, requests, and AI concierge status.
+          <p className="text-xs sm:text-sm text-gray-300 mt-1 font-normal">
+            Real-time overview of guest inquiries, service requests, and AI concierge status.
           </p>
         </div>
 
         <Link
           to="/admin/settings"
-          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+          className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-medium flex items-center gap-2 shrink-0"
         >
           <Activity className="w-4 h-4" />
           <span>Advanced Diagnostics</span>
@@ -73,61 +73,61 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       {/* Summary Metrics Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Guest Conversations */}
-        <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-[#00f0ff]/50 transition-all">
+        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-medium text-gray-300">
               Guest Conversations
             </span>
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <MessageSquare className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mt-3">{totalConversations}</div>
-          <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+          <div className="text-3xl font-medium text-white mt-3">{totalConversations}</div>
+          <p className="text-xs text-gray-400 mt-1 flex items-center gap-1 font-normal">
             <Clock className="w-3 h-3 text-[#00f0ff]" /> Active guest session(s)
           </p>
         </div>
 
         {/* Metric 2: Questions Answered */}
-        <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-[#00f0ff]/50 transition-all">
+        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-medium text-gray-300">
               Questions Answered
             </span>
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <HelpCircle className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mt-3">{questionsAnswered}</div>
-          <p className="text-xs text-gray-400 mt-1">Concierge responses delivered</p>
+          <div className="text-3xl font-medium text-white mt-3">{questionsAnswered}</div>
+          <p className="text-xs text-gray-400 mt-1 font-normal">Concierge responses delivered</p>
         </div>
 
         {/* Metric 3: Guest Requests */}
-        <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-[#00f0ff]/50 transition-all">
+        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-medium text-gray-300">
               Guest Requests
             </span>
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <ClipboardList className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mt-3">{totalRequests}</div>
-          <p className="text-xs text-gray-400 mt-1">Services & tasks logged</p>
+          <div className="text-3xl font-medium text-white mt-3">{totalRequests}</div>
+          <p className="text-xs text-gray-400 mt-1 font-normal">Services & tasks logged</p>
         </div>
 
         {/* Metric 4: Needs Staff Attention */}
-        <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-[#00f0ff]/50 transition-all">
+        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <span className="text-xs font-medium text-gray-300">
               Needs Staff Attention
             </span>
-            <div className="p-2.5 rounded-xl bg-[#ff007f]/15 text-[#ff007f]">
+            <div className="p-2.5 rounded-xl bg-pink-500/15 text-pink-400">
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-[#ff007f] mt-3">{needsAttention}</div>
-          <p className="text-xs text-gray-400 mt-1">Pending staff follow-ups</p>
+          <div className="text-3xl font-medium text-pink-400 mt-3">{needsAttention}</div>
+          <p className="text-xs text-gray-400 mt-1 font-normal">Pending staff follow-ups</p>
         </div>
       </div>
 

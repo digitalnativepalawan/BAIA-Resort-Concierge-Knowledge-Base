@@ -1,50 +1,57 @@
 import { TalaSettings } from '../types';
-import { pb } from '../lib/pocketbase';
+import { supabase, isSupabaseConfigured, localCache } from '../lib/supabase';
 
-const SETTINGS_COLLECTION = 'settings';
+const SETTINGS_TABLE = 'settings';
+const SETTINGS_KEY = 'baia_resort_settings';
 
 export const settingsService = {
   saveSettings: async (settings: TalaSettings): Promise<void> => {
     try {
-      // Exclude secrets before saving
       const safeSettings = { ...settings };
       delete safeSettings.openrouterApiKey;
       delete safeSettings.customApiKey;
 
-      if (pb.authStore.isValid) {
-        // Find existing resort settings record or create one
-        try {
-          const records = await pb.collection(SETTINGS_COLLECTION).getList(1, 1);
-          if (records.items.length > 0) {
-            await pb.collection(SETTINGS_COLLECTION).update(records.items[0].id, {
-              value: safeSettings
-            });
-          } else {
-            await pb.collection(SETTINGS_COLLECTION).create({
-              key: 'baia_resort_settings',
-              value: safeSettings
-            });
-          }
-        } catch (e) {
-          console.warn('PocketBase settings save error:', e);
+      localCache.set('resort_settings', safeSettings);
+
+      if (isSupabaseConfigured()) {
+        const { data } = await supabase
+          .from(SETTINGS_TABLE)
+          .select('id')
+          .eq('key', SETTINGS_KEY)
+          .maybeSingle();
+
+        if (data?.id) {
+          await supabase
+            .from(SETTINGS_TABLE)
+            .update({ value: safeSettings })
+            .eq('id', data.id);
+        } else {
+          await supabase
+            .from(SETTINGS_TABLE)
+            .insert({ key: SETTINGS_KEY, value: safeSettings });
         }
       }
     } catch (err) {
-      console.warn('Failed to sync settings with PocketBase:', err);
+      console.warn('Failed to sync settings with Supabase:', err);
     }
   },
 
   getSettings: async (): Promise<Partial<TalaSettings> | null> => {
     try {
-      if (pb.authStore.isValid) {
-        const records = await pb.collection(SETTINGS_COLLECTION).getList(1, 1);
-        if (records.items.length > 0 && records.items[0].value) {
-          return records.items[0].value as Partial<TalaSettings>;
+      if (isSupabaseConfigured()) {
+        const { data } = await supabase
+          .from(SETTINGS_TABLE)
+          .select('value')
+          .eq('key', SETTINGS_KEY)
+          .maybeSingle();
+
+        if (data?.value) {
+          return data.value as Partial<TalaSettings>;
         }
       }
     } catch (e) {
-      console.warn('PocketBase getSettings fallback to local:', e);
+      console.warn('Supabase getSettings fallback to local:', e);
     }
-    return null;
-  }
+    return localCache.get<Partial<TalaSettings> | null>('resort_settings', null);
+  },
 };

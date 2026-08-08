@@ -1,72 +1,102 @@
-import { pb } from '../lib/pocketbase';
-
-export interface AdminUser {
-  id: string;
-  email: string;
-  name?: string;
-  role?: string;
-}
+import { supabase, isSupabaseConfigured, localCache } from '../lib/supabase';
+import { AdminUser } from '../types';
 
 export const authService = {
   subscribeToAuth: (callback: (user: AdminUser | null) => void) => {
-    // Notify on initial load
-    if (pb.authStore.isValid && pb.authStore.record) {
-      callback({
-        id: pb.authStore.record.id,
-        email: pb.authStore.record.email,
-        name: pb.authStore.record.name,
-        role: pb.authStore.record.role || 'staff'
-      });
-    } else {
-      callback(null);
+    if (!isSupabaseConfigured()) {
+      const cached = localCache.get<AdminUser | null>('admin_user', null);
+      callback(cached);
+      return () => {};
     }
 
-    // Subscribe to auth state changes
-    const removeListener = pb.authStore.onChange((token, record) => {
-      if (token && record) {
-        callback({
-          id: record.id,
-          email: record.email,
-          name: record.name,
-          role: record.role || 'staff'
-        });
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const user: AdminUser = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+          role: session.user.user_metadata?.role || 'staff',
+        };
+        localCache.set('admin_user', user);
+        callback(user);
       } else {
         callback(null);
       }
-    }, true);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const user: AdminUser = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+          role: session.user.user_metadata?.role || 'staff',
+        };
+        localCache.set('admin_user', user);
+        callback(user);
+      } else {
+        localCache.set('admin_user', null);
+        callback(null);
+      }
+    });
 
     return () => {
-      removeListener();
+      subscription.unsubscribe();
     };
   },
 
   login: async (email: string, password: string): Promise<AdminUser> => {
-    const authData = await pb.collection('users').authWithPassword(email, password);
-    return {
-      id: authData.record.id,
-      email: authData.record.email,
-      name: authData.record.name,
-      role: authData.record.role || 'staff'
+    if (!isSupabaseConfigured()) {
+      // Fallback local auth for demo when Supabase environment variables are not yet provided
+      const localUser: AdminUser = {
+        id: 'local-admin-01',
+        email,
+        name: email.split('@')[0],
+        role: 'admin',
+      };
+      localCache.set('admin_user', localUser);
+      return localUser;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data.user) {
+      throw new Error('User not found');
+    }
+
+    const user: AdminUser = {
+      id: data.user.id,
+      email: data.user.email || '',
+      name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0],
+      role: data.user.user_metadata?.role || 'staff',
     };
+    localCache.set('admin_user', user);
+    return user;
   },
 
   logoutUser: async (): Promise<void> => {
-    pb.authStore.clear();
+    if (isSupabaseConfigured()) {
+      await supabase.auth.signOut();
+    }
+    localCache.set('admin_user', null);
   },
 
   getCurrentUser: (): AdminUser | null => {
-    if (pb.authStore.isValid && pb.authStore.record) {
-      return {
-        id: pb.authStore.record.id,
-        email: pb.authStore.record.email,
-        name: pb.authStore.record.name,
-        role: pb.authStore.record.role || 'staff'
-      };
-    }
-    return null;
+    return localCache.get<AdminUser | null>('admin_user', null);
   },
 
   isAuthenticated: (): boolean => {
-    return pb.authStore.isValid;
-  }
+    return Boolean(localCache.get<AdminUser | null>('admin_user', null));
+  },
 };

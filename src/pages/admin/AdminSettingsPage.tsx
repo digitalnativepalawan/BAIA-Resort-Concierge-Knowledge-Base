@@ -14,7 +14,6 @@ import {
   CheckCircle,
   AlertTriangle,
   Play,
-  RotateCcw,
   Save,
   LogIn,
   LogOut,
@@ -79,53 +78,53 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-12">
-      {/* Page Title */}
-      <div className="bg-[#080d1a] border border-[#00f0ff]/30 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_0_20px_rgba(0,240,255,0.08)]">
+    <div className="max-w-5xl mx-auto space-y-8 pb-12 font-inter">
+      {/* Page Header */}
+      <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 backdrop-blur-md shadow-sm">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
-            <Settings className="w-7 h-7 text-[#00f0ff]" />
+          <h1 className="text-2xl sm:text-3xl font-medium text-white flex items-center gap-2.5 tracking-tight">
+            <Settings className="w-6 h-6 sm:w-7 sm:h-7 text-[#00f0ff]" />
             <span>Admin & System Settings</span>
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Configure OpenRouter AI, speech synthesis, concierge prompt persona, and cloud sync.
+          <p className="text-xs sm:text-sm text-gray-300 font-normal mt-1">
+            Configure OpenRouter AI, speech synthesis parameters, concierge persona, and cloud synchronization.
           </p>
         </div>
 
         {saveToast && (
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 animate-bounce">
-            <CheckCircle className="w-4 h-4" />
+          <div className="px-3.5 py-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-medium flex items-center gap-1.5 animate-bounce shrink-0">
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
             <span>Settings Saved</span>
           </div>
         )}
       </div>
 
       {/* SECTION 1: AI GATEWAY (OPENROUTER) */}
-      <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/15">
-          <div className="flex items-center gap-2.5">
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-6 backdrop-blur-md shadow-sm">
+        <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">OpenRouter AI Gateway</h2>
-              <p className="text-xs text-gray-400">Primary intelligence provider for TALA Concierge</p>
+              <h2 className="text-lg font-medium text-white">OpenRouter AI Gateway</h2>
+              <p className="text-xs text-gray-400 font-normal">Primary intelligence provider for TALA Concierge</p>
             </div>
           </div>
 
-          <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+          <span className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             OpenRouter Active
           </span>
         </div>
 
         {/* API Key Configuration */}
-        <div className="bg-[#050811] p-4 rounded-xl border border-[#00f0ff]/15 space-y-3">
-          <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-[#050b14]/70 p-4 rounded-xl border border-[#00f0ff]/15 space-y-3">
+          <label className="block text-xs font-medium text-gray-300 flex items-center gap-1.5">
             <Key className="w-3.5 h-3.5 text-[#00f0ff]" />
             <span>Custom OpenRouter API Key (Optional)</span>
           </label>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <input
               type="password"
               value={apiKeyInput}
@@ -135,11 +134,11 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                   ? 'Server environment key active (or paste custom sk-or-v1-...)'
                   : 'Paste OpenRouter API Key (sk-or-v1-...)'
               }
-              className="flex-1 bg-[#080d1a] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder-gray-500 focus:outline-none"
+              className="flex-1 bg-[#080d1a] border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none transition-colors"
             />
             <button
               onClick={handleSaveKey}
-              className="px-4 py-2 rounded-xl bg-[#00f0ff] text-black font-bold text-xs uppercase tracking-wider hover:bg-[#00f0ff]/80 transition-all flex items-center justify-center gap-1.5 shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-[#00f0ff] text-slate-950 font-medium text-xs hover:bg-[#00f0ff]/80 transition-all flex items-center justify-center gap-1.5 shrink-0"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save Key</span>
@@ -147,7 +146,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             <button
               onClick={handleTestKey}
               disabled={testKeyStatus === 'testing'}
-              className="px-4 py-2 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-medium transition-all flex items-center justify-center gap-1.5 shrink-0"
             >
               <Activity className="w-3.5 h-3.5" />
               <span>{testKeyStatus === 'testing' ? 'Testing...' : 'Test Connection'}</span>
@@ -155,20 +154,20 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           </div>
 
           {testKeyStatus === 'success' && (
-            <p className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+            <p className="text-xs text-emerald-400 font-normal flex items-center gap-1.5 pt-1">
               <CheckCircle className="w-3.5 h-3.5" /> Connection successful! OpenRouter endpoint reachable.
             </p>
           )}
           {testKeyStatus === 'error' && (
-            <p className="text-xs font-mono text-amber-400 flex items-center gap-1">
+            <p className="text-xs text-amber-400 font-normal flex items-center gap-1.5 pt-1">
               <AlertTriangle className="w-3.5 h-3.5" /> Connection check failed. Verify API key or network connection.
             </p>
           )}
         </div>
 
         {/* Live Model Catalog Selector */}
-        <div>
-          <label className="block text-xs font-bold text-[#00f0ff] uppercase tracking-wider mb-2">
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-[#00f0ff] tracking-wide">
             Select Active OpenRouter Model
           </label>
           <OpenRouterModelSelector
@@ -179,34 +178,34 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 2: VOICE SYNTHESIS */}
-      <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/15">
-          <div className="flex items-center gap-2.5">
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-6 backdrop-blur-md shadow-sm">
+        <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <Volume2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Voice & Speech Engine</h2>
-              <p className="text-xs text-gray-400">Customize TALA's vocal tone, pitch, and speed profile</p>
+              <h2 className="text-lg font-medium text-white">Voice & Speech Engine</h2>
+              <p className="text-xs text-gray-400 font-normal">Customize TALA's vocal tone, pitch, and speed profile</p>
             </div>
           </div>
 
           <button
             onClick={onTestVoice}
-            className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/40 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-medium transition-all flex items-center gap-1.5"
           >
             <Play className="w-3.5 h-3.5 fill-[#00f0ff]" />
             <span>Test Voice</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Voice Profile Selector */}
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+              <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center justify-between">
                 <span>Synthesis Voice Profile</span>
-                <span className="text-[10px] text-[#00f0ff] font-mono">
+                <span className="text-[11px] text-[#00f0ff] font-normal">
                   {availableVoices.length} voices available
                 </span>
               </label>
@@ -220,18 +219,18 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                 const selectedVoice = availableVoices.find((v) => v.name === settings.selectedVoiceName);
 
                 return (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <select
                       value={settings.selectedVoiceName}
                       onChange={(e) => onUpdateSettings({ selectedVoiceName: e.target.value })}
-                      className="w-full bg-[#050811] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none"
+                      className="w-full bg-[#050b14]/80 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors"
                     >
                       {availableVoices.length === 0 ? (
                         <option value="">Default System Voice</option>
                       ) : (
                         <>
                           {naturalFemale.length > 0 && (
-                            <optgroup label="✨ Natural & Neural Female Voices">
+                            <optgroup label="Natural & Neural Female Voices">
                               {naturalFemale.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -240,7 +239,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                             </optgroup>
                           )}
                           {standardFemale.length > 0 && (
-                            <optgroup label="🌸 Standard Female Voices">
+                            <optgroup label="Standard Female Voices">
                               {standardFemale.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -249,7 +248,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                             </optgroup>
                           )}
                           {maleVoices.length > 0 && (
-                            <optgroup label="👨 Male Voices">
+                            <optgroup label="Male Voices">
                               {maleVoices.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -258,7 +257,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                             </optgroup>
                           )}
                           {otherVoices.length > 0 && (
-                            <optgroup label="🌐 Other System Voices">
+                            <optgroup label="Other System Voices">
                               {otherVoices.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -271,24 +270,24 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                     </select>
 
                     {/* Active Voice Information Card */}
-                    <div className="p-3 bg-[#050811] rounded-xl border border-[#00f0ff]/15 flex items-center justify-between gap-2 text-xs">
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="text-gray-400 text-[10px] uppercase tracking-wider">Active Selection</div>
-                        <div className="font-semibold text-white truncate">
+                    <div className="p-3.5 bg-[#050b14]/70 rounded-xl border border-[#00f0ff]/15 flex items-center justify-between gap-3 text-xs">
+                      <div className="space-y-1 min-w-0">
+                        <div className="text-gray-400 text-[10px] font-normal uppercase tracking-wider">Active Selection</div>
+                        <div className="font-medium text-white truncate">
                           {settings.selectedVoiceName || 'Default System Voice'}
                         </div>
                         <div className="flex items-center gap-1.5 pt-0.5">
                           {selectedVoice?.isNatural && (
-                            <span className="px-1.5 py-0.5 rounded bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff] text-[10px] font-mono font-bold">
-                              ✨ Natural
+                            <span className="px-2 py-0.5 rounded-md bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] text-[10px] font-medium">
+                              Natural
                             </span>
                           )}
                           {selectedVoice?.gender === 'female' && (
-                            <span className="px-1.5 py-0.5 rounded bg-pink-500/10 border border-pink-500/30 text-pink-400 text-[10px] font-mono font-bold">
-                              🌸 Female
+                            <span className="px-2 py-0.5 rounded-md bg-pink-500/10 border border-pink-500/25 text-pink-300 text-[10px] font-medium">
+                              Female
                             </span>
                           )}
-                          <span className="text-[10px] font-mono text-gray-500">
+                          <span className="text-[10px] text-gray-400 font-mono">
                             {selectedVoice?.lang || 'en-US'}
                           </span>
                         </div>
@@ -296,9 +295,9 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
 
                       <button
                         onClick={onTestVoice}
-                        className="px-3 py-1.5 rounded-lg bg-[#00f0ff] text-black font-bold text-xs uppercase tracking-wider hover:bg-[#00f0ff]/80 transition-all flex items-center gap-1 shrink-0"
+                        className="px-3 py-1.5 rounded-lg bg-[#00f0ff] text-slate-950 font-medium text-xs hover:bg-[#00f0ff]/80 transition-all flex items-center gap-1 shrink-0"
                       >
-                        <Play className="w-3 h-3 fill-black" />
+                        <Play className="w-3 h-3 fill-slate-950" />
                         <span>Test</span>
                       </button>
                     </div>
@@ -309,11 +308,11 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           </div>
 
           {/* Pitch & Rate Sliders */}
-          <div className="space-y-3 bg-[#050811] p-4 rounded-xl border border-[#00f0ff]/15">
+          <div className="space-y-4 bg-[#050b14]/70 p-4 rounded-xl border border-[#00f0ff]/15">
             <div>
-              <div className="flex justify-between text-xs font-mono text-gray-300 mb-1">
+              <div className="flex justify-between text-xs text-gray-300 mb-1.5 font-medium">
                 <span>PITCH ({settings.pitch.toFixed(1)})</span>
-                <span className="text-[#00f0ff]">Low / High Tone</span>
+                <span className="text-[#00f0ff]/90 font-normal">Low / High Tone</span>
               </div>
               <input
                 type="range"
@@ -327,9 +326,9 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             </div>
 
             <div>
-              <div className="flex justify-between text-xs font-mono text-gray-300 mb-1">
+              <div className="flex justify-between text-xs text-gray-300 mb-1.5 font-medium">
                 <span>SPEED RATE ({settings.rate.toFixed(1)}x)</span>
-                <span className="text-[#00f0ff]">Slow / Fast Pace</span>
+                <span className="text-[#00f0ff]/90 font-normal">Slow / Fast Pace</span>
               </div>
               <input
                 type="range"
@@ -346,14 +345,14 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 3: TALA PERSONA & PROMPT */}
-      <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-[#00f0ff]/15">
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+        <div className="flex items-center gap-3 pb-4 border-b border-[#00f0ff]/15">
           <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Concierge System Persona</h2>
-            <p className="text-xs text-gray-400">Core directives guiding TALA's tone, hospitality, and answers</p>
+            <h2 className="text-lg font-medium text-white">Concierge System Persona</h2>
+            <p className="text-xs text-gray-400 font-normal">Core directives guiding TALA's tone, hospitality, and answers</p>
           </div>
         </div>
 
@@ -362,73 +361,73 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             rows={5}
             value={settings.systemInstruction}
             onChange={(e) => onUpdateSettings({ systemInstruction: e.target.value })}
-            className="w-full bg-[#050811] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-xl p-4 text-xs font-mono text-gray-200 leading-relaxed focus:outline-none"
+            className="w-full bg-[#050b14]/80 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl p-4 text-xs text-gray-200 leading-relaxed focus:outline-none transition-colors"
           />
         </div>
       </section>
 
       {/* SECTION 4: BEHAVIOR TOGGLES */}
-      <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-[#00f0ff]/15">
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+        <div className="flex items-center gap-3 pb-4 border-b border-[#00f0ff]/15">
           <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
             <Sliders className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Interaction Behavior Toggles</h2>
-            <p className="text-xs text-gray-400">Configure hands-free listening, auto-speech, and audio feedback</p>
+            <h2 className="text-lg font-medium text-white">Interaction Behavior Toggles</h2>
+            <p className="text-xs text-gray-400 font-normal">Configure hands-free listening, auto-speech, and audio feedback</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/20 cursor-pointer hover:border-[#00f0ff]/50 transition-all">
-            <span className="text-xs font-bold text-white">Auto Vocalize Replies</span>
+          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050b14]/70 border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
+            <span className="text-xs font-medium text-white">Auto Vocalize Replies</span>
             <input
               type="checkbox"
               checked={settings.autoSpeak}
               onChange={(e) => onUpdateSettings({ autoSpeak: e.target.checked })}
-              className="w-4 h-4 accent-[#00f0ff]"
+              className="w-4 h-4 accent-[#00f0ff] rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/20 cursor-pointer hover:border-[#00f0ff]/50 transition-all">
-            <span className="text-xs font-bold text-white">Hands-Free Listening</span>
+          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050b14]/70 border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
+            <span className="text-xs font-medium text-white">Hands-Free Listening</span>
             <input
               type="checkbox"
               checked={settings.continuousListening}
               onChange={(e) => onUpdateSettings({ continuousListening: e.target.checked })}
-              className="w-4 h-4 accent-[#00f0ff]"
+              className="w-4 h-4 accent-[#00f0ff] rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/20 cursor-pointer hover:border-[#00f0ff]/50 transition-all">
-            <span className="text-xs font-bold text-white">Sound Effects</span>
+          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050b14]/70 border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
+            <span className="text-xs font-medium text-white">Sound Effects</span>
             <input
               type="checkbox"
               checked={settings.soundEnabled}
               onChange={(e) => onUpdateSettings({ soundEnabled: e.target.checked })}
-              className="w-4 h-4 accent-[#00f0ff]"
+              className="w-4 h-4 accent-[#00f0ff] rounded cursor-pointer"
             />
           </label>
         </div>
       </section>
 
-      {/* SECTION 5: POCKETBASE SYNC */}
-      <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/15">
-          <div className="flex items-center gap-2.5">
+      {/* SECTION 5: SUPABASE SYNC */}
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+        <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">PocketBase Backend Sync</h2>
-              <p className="text-xs text-gray-400">Sync settings, messages, requests, and knowledge base with PocketBase</p>
+              <h2 className="text-lg font-medium text-white">Supabase Cloud Sync</h2>
+              <p className="text-xs text-gray-400 font-normal">Sync settings, messages, requests, and RAG knowledge base with Supabase</p>
             </div>
           </div>
 
           {currentUser ? (
             <button
               onClick={onSignOut}
-              className="px-3.5 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-all flex items-center gap-1.5"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Log Out</span>
@@ -436,26 +435,26 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           ) : (
             <button
               onClick={onSignIn}
-              className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff] text-black font-bold text-xs uppercase tracking-wider hover:bg-[#00f0ff]/80 transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,240,255,0.3)]"
+              className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff] text-slate-950 font-medium text-xs hover:bg-[#00f0ff]/80 transition-all flex items-center gap-1.5 shadow-sm"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>PocketBase Login</span>
+              <span>Supabase Login</span>
             </button>
           )}
         </div>
 
-        <div className="bg-[#050811] p-4 rounded-xl border border-[#00f0ff]/15 flex items-center justify-between">
-          <div className="text-xs font-sans">
-            <span className="text-gray-400 block">Current Auth State:</span>
-            <span className="text-white font-bold">
-              {currentUser ? currentUser.name || currentUser.email : 'PocketBase Client Active'}
+        <div className="bg-[#050b14]/70 p-4 rounded-xl border border-[#00f0ff]/15 flex items-center justify-between">
+          <div className="text-xs">
+            <span className="text-gray-400 block font-normal">Current Auth State:</span>
+            <span className="text-white font-medium">
+              {currentUser ? currentUser.name || currentUser.email : 'Supabase Real-Time Client Active'}
             </span>
           </div>
           <span
-            className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
+            className={`px-3 py-1 rounded-full text-xs font-medium border ${
               currentUser
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+                : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
             }`}
           >
             {currentUser ? 'Cloud Synced' : 'Local Storage Only'}
@@ -464,21 +463,21 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 6: ADVANCED DIAGNOSTICS */}
-      <section className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/15">
-          <div className="flex items-center gap-2.5">
+      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+        <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
+          <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <Activity className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Advanced Diagnostics & Telemetry Logs</h2>
-              <p className="text-xs text-gray-400">Technical telemetry console and execution logs</p>
+              <h2 className="text-lg font-medium text-white">Advanced Diagnostics & Telemetry Logs</h2>
+              <p className="text-xs text-gray-400 font-normal">Technical telemetry console and execution logs</p>
             </div>
           </div>
 
           <button
             onClick={() => setShowDiagnostics(!showDiagnostics)}
-            className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-medium transition-all flex items-center gap-1.5"
           >
             <span>{showDiagnostics ? 'Hide Console' : 'Show Console'}</span>
             {showDiagnostics ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -490,7 +489,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             <div className="flex justify-end">
               <button
                 onClick={onClearLogs}
-                className="px-3 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-bold uppercase tracking-wider flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium flex items-center gap-1"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Clear Logs</span>

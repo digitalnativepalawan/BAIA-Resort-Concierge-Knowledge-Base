@@ -1,8 +1,8 @@
 import { GuestRequest, GuestRequestStatus } from '../types';
-import { pb } from '../lib/pocketbase';
+import { supabase, isSupabaseConfigured, localCache } from '../lib/supabase';
 
 const LOCAL_STORAGE_KEY = 'tala_guest_requests';
-const REQUESTS_COLLECTION = 'guest_requests';
+const REQUESTS_TABLE = 'guest_requests';
 
 const INITIAL_DEMO_REQUESTS: GuestRequest[] = [
   {
@@ -34,27 +34,16 @@ const INITIAL_DEMO_REQUESTS: GuestRequest[] = [
     room: 'Pool Villa 01',
     status: 'completed',
     createdAt: new Date(Date.now() - 1000 * 60 * 300).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-  }
+  },
 ];
 
 export const requestService = {
   getLocalRequests: (): GuestRequest[] => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_REQUESTS));
-      return INITIAL_DEMO_REQUESTS;
-    } catch (e) {
-      return INITIAL_DEMO_REQUESTS;
-    }
+    return localCache.get<GuestRequest[]>(LOCAL_STORAGE_KEY, INITIAL_DEMO_REQUESTS);
   },
 
   saveLocalRequests: (requests: GuestRequest[]) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(requests));
-    } catch (e) {
-      console.warn('Failed to save requests to localStorage', e);
-    }
+    localCache.set(LOCAL_STORAGE_KEY, requests);
   },
 
   saveRequest: async (request: GuestRequest) => {
@@ -62,17 +51,19 @@ export const requestService = {
     const updated = [request, ...current.filter((r) => r.id !== request.id)];
     requestService.saveLocalRequests(updated);
 
-    try {
-      await pb.collection(REQUESTS_COLLECTION).create({
-        title: request.title,
-        description: request.description,
-        category: request.category,
-        guest_label: request.guestLabel,
-        room: request.room,
-        status: request.status
-      });
-    } catch (e) {
-      console.warn('PocketBase save request notice:', e);
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from(REQUESTS_TABLE).insert({
+          guest_name: request.guestLabel,
+          room_number: request.room,
+          request_type: request.category,
+          status: request.status,
+          notes: `${request.title}: ${request.description}`,
+          created_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.warn('Supabase save request notice:', e);
+      }
     }
 
     return updated;
@@ -81,14 +72,22 @@ export const requestService = {
   updateRequestStatus: async (requestId: string, status: GuestRequestStatus) => {
     const current = requestService.getLocalRequests();
     const updated = current.map((r) =>
-      r.id === requestId ? { ...r, status, updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) } : r
+      r.id === requestId
+        ? {
+            ...r,
+            status,
+            updatedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          }
+        : r
     );
     requestService.saveLocalRequests(updated);
 
-    try {
-      await pb.collection(REQUESTS_COLLECTION).update(requestId, { status });
-    } catch (e) {
-      console.warn('PocketBase request status update notice:', e);
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from(REQUESTS_TABLE).update({ status }).eq('id', requestId);
+      } catch (e) {
+        console.warn('Supabase request status update notice:', e);
+      }
     }
 
     return updated;
@@ -99,69 +98,72 @@ export const requestService = {
     const updated = current.filter((r) => r.id !== requestId);
     requestService.saveLocalRequests(updated);
 
-    try {
-      await pb.collection(REQUESTS_COLLECTION).delete(requestId);
-    } catch (e) {
-      console.warn('PocketBase request delete notice:', e);
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from(REQUESTS_TABLE).delete().eq('id', requestId);
+      } catch (e) {
+        console.warn('Supabase request delete notice:', e);
+      }
     }
 
     return updated;
   },
 
   listenRequests: (callback: (requests: GuestRequest[]) => void) => {
-    try {
-      pb.collection(REQUESTS_COLLECTION)
-        .getList(1, 50, { sort: '-created' })
-        .then((res) => {
-          if (res.items.length > 0) {
-            const remoteRequests: GuestRequest[] = res.items.map((item) => ({
-              id: item.id,
-              title: item.title,
-              description: item.description,
-              category: item.category,
-              guestLabel: item.guest_label || 'Guest',
-              room: item.room || 'Main Villa',
-              status: item.status || 'new',
-              createdAt: new Date(item.created).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-            }));
-            requestService.saveLocalRequests(remoteRequests);
-            callback(remoteRequests);
-          }
-        })
-        .catch(() => {});
+    const cached = requestService.getLocalRequests();
+    callback(cached);
 
-      let unsubscribeFn: (() => void) | null = null;
-      pb.collection(REQUESTS_COLLECTION)
-        .subscribe('*', () => {
-          pb.collection(REQUESTS_COLLECTION)
-            .getList(1, 50, { sort: '-created' })
-            .then((res) => {
-              const remoteRequests: GuestRequest[] = res.items.map((item) => ({
-                id: item.id,
-                title: item.title,
-                description: item.description,
-                category: item.category,
-                guestLabel: item.guest_label || 'Guest',
-                room: item.room || 'Main Villa',
-                status: item.status || 'new',
-                createdAt: new Date(item.created).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-              }));
-              requestService.saveLocalRequests(remoteRequests);
-              callback(remoteRequests);
-            })
-            .catch(() => {});
-        })
-        .then((unsub) => {
-          unsubscribeFn = unsub;
-        })
-        .catch(() => {});
-
-      return () => {
-        if (unsubscribeFn) unsubscribeFn();
-        pb.collection(REQUESTS_COLLECTION).unsubscribe('*').catch(() => {});
-      };
-    } catch (e) {
+    if (!isSupabaseConfigured()) {
       return () => {};
     }
-  }
+
+    const fetchRequests = async () => {
+      const { data, error } = await supabase
+        .from(REQUESTS_TABLE)
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const remoteRequests: GuestRequest[] = data.map((item) => {
+          const notes = item.notes || '';
+          const parts = notes.split(': ');
+          const title = parts[0] || item.request_type || 'Guest Service Request';
+          const description = parts.slice(1).join(': ') || notes || 'Service requested.';
+
+          return {
+            id: item.id,
+            title,
+            description,
+            category: (item.request_type as any) || 'housekeeping',
+            guestLabel: item.guest_name || 'Guest',
+            room: item.room_number || 'Main Villa',
+            status: (item.status as GuestRequestStatus) || 'new',
+            createdAt: new Date(item.created_at).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          };
+        });
+        requestService.saveLocalRequests(remoteRequests);
+        callback(remoteRequests);
+      }
+    };
+
+    fetchRequests();
+
+    const channel = supabase
+      .channel('public:guest_requests')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: REQUESTS_TABLE },
+        () => {
+          fetchRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
 };
