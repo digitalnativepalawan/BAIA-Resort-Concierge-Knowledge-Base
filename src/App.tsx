@@ -111,8 +111,71 @@ export default function App() {
   // Speech Recognition & Synthesis references
   const recognitionRef = useRef<any>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const startListeningRef = useRef<(() => void) | null>(null);
+  const startListeningRef = useRef<((isBargeInMode?: boolean) => void) | null>(null);
   const silenceCountRef = useRef<number>(0);
+  const isSpeakingRef = useRef<boolean>(false);
+  const micBargeInCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    isSpeakingRef.current = state === 'SPEAKING';
+  }, [state]);
+
+  // Microphone audio input listener for barge-in detection
+  const setupMicBargeInListener = useCallback((onBargeIn: (source: string) => void) => {
+    if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) return () => {};
+
+    let active = true;
+    let audioCtx: AudioContext | null = null;
+    let stream: MediaStream | null = null;
+    let animId: number | null = null;
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((micStream) => {
+      if (!active) {
+        micStream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      stream = micStream;
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      audioCtx = new AudioContextClass();
+      const source = audioCtx.createMediaStreamSource(micStream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.5;
+      source.connect(analyser);
+
+      const buffer = new Uint8Array(analyser.frequencyBinCount);
+
+      const checkVolume = () => {
+        if (!active || !analyser) return;
+        analyser.getByteFrequencyData(buffer);
+        let total = 0;
+        for (let i = 0; i < buffer.length; i++) total += buffer[i];
+        const avg = total / buffer.length;
+
+        // Threshold for guest microphone input during TALA speech
+        if (avg > 18) {
+          active = false;
+          onBargeIn('Microphone Volume Input');
+        } else {
+          animId = requestAnimationFrame(checkVolume);
+        }
+      };
+
+      // Grace period to ignore speaker onset audio
+      setTimeout(() => {
+        if (active) checkVolume();
+      }, 350);
+    }).catch(() => {});
+
+    return () => {
+      active = false;
+      if (animId) cancelAnimationFrame(animId);
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (audioCtx) audioCtx.close().catch(() => {});
+    };
+  }, []);
 
   // Persist knowledge files
   useEffect(() => {
@@ -271,13 +334,48 @@ export default function App() {
       const cleanedText = cleanTextForSpeech(text);
       if (!cleanedText) return;
 
+      // Clean up previous mic barge-in listener if active
+      if (micBargeInCleanupRef.current) {
+        micBargeInCleanupRef.current();
+        micBargeInCleanupRef.current = null;
+      }
+
       setState('SPEAKING');
+      isSpeakingRef.current = true;
       setSpeechVolume(0.8);
-      addLog('[ VOCALIZING ]: TALA speech output active', 'speaking');
+      addLog('[ VOCALIZING ]: TALA speech output active (Barge-In Listening)', 'speaking');
 
       const selectedVoice = settings.selectedVoiceName || 'TALA - Natural Neural Female (US)';
       const pitch = settings.pitch || 1.0;
       const rate = settings.rate || 1.0;
+
+      // Activate barge-in microphone audio input listener
+      micBargeInCleanupRef.current = setupMicBargeInListener((source) => {
+        if (isSpeakingRef.current || (typeof window !== 'undefined' && window.speechSynthesis?.speaking)) {
+          addLog(`[ BARGE-IN DETECTED ]: Guest interrupt detected via ${source}. Stopping speech output immediately.`, 'listening');
+          speechEngine.stopSpeech();
+          if (micBargeInCleanupRef.current) {
+            micBargeInCleanupRef.current();
+            micBargeInCleanupRef.current = null;
+          }
+          isSpeakingRef.current = false;
+          setState('LISTENING');
+          soundEffects.playListeningStart();
+
+          if (startListeningRef.current) {
+            startListeningRef.current();
+          }
+        }
+      });
+
+      // Start speech recognition in background for speech token barge-in
+      if (startListeningRef.current) {
+        setTimeout(() => {
+          if (startListeningRef.current && isSpeakingRef.current) {
+            startListeningRef.current(true);
+          }
+        }, 200);
+      }
 
       speechEngine.speakText(
         cleanedText,
@@ -285,13 +383,18 @@ export default function App() {
         pitch,
         rate,
         () => {
+          isSpeakingRef.current = false;
+          if (micBargeInCleanupRef.current) {
+            micBargeInCleanupRef.current();
+            micBargeInCleanupRef.current = null;
+          }
           setState('IDLE');
           setSpeechVolume(0.2);
 
           // Resume hands-free voice loop if enabled
           if (settings.continuousListening) {
             setTimeout(() => {
-              if (startListeningRef.current) {
+              if (startListeningRef.current && !isSpeakingRef.current) {
                 startListeningRef.current();
               }
             }, 600);
@@ -299,10 +402,15 @@ export default function App() {
         }
       );
     },
-    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog]
+    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog, setupMicBargeInListener]
   );
 
   const stopSpeech = useCallback(() => {
+    if (micBargeInCleanupRef.current) {
+      micBargeInCleanupRef.current();
+      micBargeInCleanupRef.current = null;
+    }
+    isSpeakingRef.current = false;
     speechEngine.stopSpeech();
     if (recognitionRef.current) {
       try {
@@ -411,7 +519,7 @@ export default function App() {
   );
 
   // Web Speech Recognition
-  const startListening = useCallback(() => {
+  const startListening = useCallback((isBargeInMode = false) => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -420,14 +528,16 @@ export default function App() {
       return;
     }
 
-    if (state === 'LISTENING') {
+    if (state === 'LISTENING' && !isBargeInMode) {
       if (recognitionRef.current) recognitionRef.current.stop();
       setState('IDLE');
       soundEffects.playListeningEnd();
       return;
     }
 
-    stopSpeech();
+    if (!isBargeInMode) {
+      stopSpeech();
+    }
 
     try {
       const recognition = new SpeechRecognition();
@@ -436,14 +546,40 @@ export default function App() {
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
+      const triggerBargeIn = (eventReason: string) => {
+        if (isSpeakingRef.current || (typeof window !== 'undefined' && window.speechSynthesis?.speaking)) {
+          addLog(`[ BARGE-IN DETECTED ]: Guest input (${eventReason}). Interrupting TALA speech immediately.`, 'listening');
+          speechEngine.stopSpeech();
+          if (micBargeInCleanupRef.current) {
+            micBargeInCleanupRef.current();
+            micBargeInCleanupRef.current = null;
+          }
+          isSpeakingRef.current = false;
+          setState('LISTENING');
+          soundEffects.playListeningStart();
+        }
+      };
+
       recognition.onstart = () => {
-        setState('LISTENING');
-        setInterimTranscript('');
-        soundEffects.playListeningStart();
-        addLog('[ LISTENING ]: Listening for guest speech...', 'listening');
+        if (!isBargeInMode) {
+          setState('LISTENING');
+          setInterimTranscript('');
+          soundEffects.playListeningStart();
+          addLog('[ LISTENING ]: Listening for guest speech...', 'listening');
+        }
+      };
+
+      recognition.onspeechstart = () => {
+        triggerBargeIn('speechstart');
+      };
+
+      recognition.onsoundstart = () => {
+        triggerBargeIn('soundstart');
       };
 
       recognition.onresult = (event: any) => {
+        triggerBargeIn('transcript token');
+
         let currentInterim = '';
         let finalScript = '';
 
@@ -479,6 +615,7 @@ export default function App() {
       };
 
       const handleSilenceEnd = () => {
+        if (isSpeakingRef.current) return;
         setState('IDLE');
         setInterimTranscript('');
 
@@ -502,17 +639,19 @@ export default function App() {
       };
 
       recognition.onend = () => {
-        if (state === 'LISTENING') {
+        if (state === 'LISTENING' && !isSpeakingRef.current) {
           handleSilenceEnd();
         }
       };
 
       recognition.start();
     } catch (e: any) {
-      addLog(`Mic activation error: ${e.message || e}`, 'error');
-      setState('IDLE');
+      if (!isBargeInMode) {
+        addLog(`Mic activation error: ${e.message || e}`, 'error');
+        setState('IDLE');
+      }
     }
-  }, [state, addLog, stopSpeech, sendPromptToTala]);
+  }, [state, addLog, stopSpeech, sendPromptToTala, speakText]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
