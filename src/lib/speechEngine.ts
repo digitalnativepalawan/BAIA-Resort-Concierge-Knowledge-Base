@@ -531,41 +531,7 @@ export const speechEngine = {
         return;
       }
 
-      // Check if target is a Cloud Neural Female Voice or empty (default to Cloud Neural)
-      const isCloudVoice =
-        !voiceName ||
-        voiceName.startsWith('cloud-') ||
-        voiceName.startsWith('TALA -') ||
-        CLOUD_FEMALE_NEURAL_VOICES.some((cv) => cv.name === voiceName || cv.voiceURI === voiceName);
-
-      if (isCloudVoice) {
-        const targetCloudVoice = voiceName || 'TALA - Natural Neural Female (US)';
-        const audioUrl = `/api/tts?text=${encodeURIComponent(cleanedText.slice(0, 300))}&voice=${encodeURIComponent(targetCloudVoice)}`;
-        const audio = new Audio(audioUrl);
-        currentAudio = audio;
-
-        audio.onended = () => {
-          currentAudio = null;
-          if (onEnd) onEnd();
-          resolve();
-        };
-
-        audio.onerror = (err) => {
-          console.warn('[CLOUD TTS ERROR, FALLING BACK TO WEBSPEECH]', err);
-          currentAudio = null;
-          speakWebSpeech(cleanedText, voiceName, pitch, rate, onEnd, resolve);
-        };
-
-        audio.play().catch((err) => {
-          console.warn('[CLOUD AUDIO PLAY ERROR, FALLING BACK TO WEBSPEECH]', err);
-          currentAudio = null;
-          speakWebSpeech(cleanedText, voiceName, pitch, rate, onEnd, resolve);
-        });
-
-        return;
-      }
-
-      // WebSpeech fallback route
+      // Use browser high-fidelity SpeechSynthesis engine
       speakWebSpeech(cleanedText, voiceName, pitch, rate, onEnd, resolve);
     });
   },

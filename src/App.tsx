@@ -19,6 +19,8 @@ import { conversationService } from './services/conversationService';
 import { knowledgeService } from './services/knowledgeService';
 import { settingsService } from './services/settingsService';
 import { requestService } from './services/requestService';
+import { isSupabaseConfigured } from './lib/supabase';
+import { openrouter } from './lib/openrouter';
 import {
   isFemaleVoiceName,
   isNaturalVoiceName,
@@ -223,27 +225,15 @@ export default function App() {
     }
   }, [addLog]);
 
-  // Check Server Health
+  // Check Supabase & Engine Connectivity
   useEffect(() => {
-    fetch('/api/health')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          return res.json();
-        }
-        throw new Error('Non-JSON response');
-      })
-      .then((data) => {
-        setHasServerOpenRouterKey(Boolean(data?.hasServerOpenRouterKey));
-        addLog(
-          `TALA Core Server Online. OpenRouter Gateway: ${data?.hasServerOpenRouterKey ? 'READY' : 'LOCAL KEY MODE'}.`,
-          'system'
-        );
-      })
-      .catch(() => {
-        addLog('Server health check pending or offline mode.', 'warning');
-      });
+    const configured = isSupabaseConfigured();
+    setHasServerOpenRouterKey(configured);
+    if (configured) {
+      addLog('TALA Engine Active via Supabase Edge Functions (tala-chat).', 'system');
+    } else {
+      addLog('Supabase Edge Functions pending. Set VITE_SUPABASE_URL in Lovable settings.', 'warning');
+    }
   }, [addLog]);
 
   // Web & Cloud Speech Voices Initializer
@@ -362,32 +352,13 @@ export default function App() {
 
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
 
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            openrouterApiKey: effectiveOpenRouterKey || undefined,
-            model: selectedModel,
-            prompt: promptText,
-            history: historyForApi,
-            systemInstruction: groundedSystemInstruction
-          })
+        const data = await openrouter.sendChatPrompt({
+          openrouterApiKey: effectiveOpenRouterKey || undefined,
+          model: selectedModel,
+          prompt: promptText,
+          history: historyForApi,
+          systemInstruction: groundedSystemInstruction
         });
-
-        const rawResponseBody = await response.text();
-        let data: any = {};
-        try {
-          data = JSON.parse(rawResponseBody);
-        } catch (e) {
-          data = { error: `Server response error (${response.status})` };
-        }
-
-        if (!response.ok || data.error) {
-          throw new Error(data.error || `HTTP Error ${response.status}`);
-        }
 
         const replyText = data.responseText || 'TALA received an empty response.';
 

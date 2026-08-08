@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Key, Sliders, Volume2, Shield, RotateCcw, Check, Sparkles, Cpu, Radio, ShieldCheck, Zap, Info, Play } from 'lucide-react';
 import { TalaSettings, VoiceOption } from '../types';
 import { OpenRouterModelSelector } from './OpenRouterModelSelector';
+import { openrouter } from '../lib/openrouter';
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -55,21 +56,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     setTestingConnection(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          openrouterApiKey: openrouterKeyInput.trim(),
-          model: settings.selectedOpenRouterModel || 'openrouter/free',
-          prompt: 'Connection test string. Respond with single word "ONLINE".',
-          systemInstruction: 'Respond with "ONLINE".'
-        })
+      const data = await openrouter.sendChatPrompt({
+        openrouterApiKey: openrouterKeyInput.trim(),
+        model: settings.selectedOpenRouterModel || 'openrouter/free',
+        prompt: 'Connection test string. Respond with single word "ONLINE".',
+        systemInstruction: 'Respond with "ONLINE".'
       });
-      const data = await res.json();
-      if (res.ok && data.responseText) {
+      if (data && data.responseText) {
         setTestResult({ success: true, msg: `Connection verified (${data.model || 'OpenRouter'}).` });
       } else {
-        setTestResult({ success: false, msg: data.error || 'Connection failed.' });
+        setTestResult({ success: false, msg: 'Connection failed.' });
       }
     } catch (err: any) {
       setTestResult({ success: false, msg: err.message || 'Network test failed.' });

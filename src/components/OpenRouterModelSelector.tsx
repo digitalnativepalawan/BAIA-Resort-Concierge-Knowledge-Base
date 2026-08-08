@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Sparkles, Check, ShieldCheck } from 'lucide-react';
-import { OpenRouterModel } from '../types';
+import { openrouter, OpenRouterModel } from '../lib/openrouter';
 
 interface OpenRouterModelSelectorProps {
   selectedModelId: string;
@@ -26,11 +26,9 @@ export const OpenRouterModelSelector: React.FC<OpenRouterModelSelectorProps> = (
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch('/api/models');
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-        const data = await res.json();
+        const fetched = await openrouter.fetchModels();
         if (isMounted) {
-          setModels(data.models || []);
+          setModels(fetched || []);
         }
       } catch (err: any) {
         if (isMounted) {

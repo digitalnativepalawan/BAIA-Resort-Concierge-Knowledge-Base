@@ -3,6 +3,8 @@ import { TalaSettings, VoiceOption, TelemetryLogEntry, AdminUser, KnowledgeFile,
 import { OpenRouterModelSelector } from '../../components/OpenRouterModelSelector';
 import { TelemetryLog } from '../../components/TelemetryLog';
 import { speechEngine, VoiceTestSuiteSummary } from '../../lib/speechEngine';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { openrouter } from '../../lib/openrouter';
 import {
   DEFAULT_KNOWLEDGE_TXT,
   DEFAULT_KNOWLEDGE_MD,
@@ -168,8 +170,13 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const handleTestKey = async () => {
     setTestKeyStatus('testing');
     try {
-      const res = await fetch('/api/health');
-      if (res.ok) {
+      if (isSupabaseConfigured()) {
+        setTestKeyStatus('success');
+      } else if (apiKeyInput.trim()) {
+        await openrouter.sendChatPrompt({
+          openrouterApiKey: apiKeyInput.trim(),
+          prompt: 'Ping'
+        });
         setTestKeyStatus('success');
       } else {
         setTestKeyStatus('error');
