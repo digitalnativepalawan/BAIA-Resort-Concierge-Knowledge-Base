@@ -43,6 +43,7 @@ interface GuestConciergeProps {
   soundEnabled: boolean;
   onToggleSound: () => void;
   latencyMs?: number | null;
+  audioStream?: MediaStream | null;
 }
 
 const GUEST_QUICK_CHIPS = [
@@ -88,7 +89,8 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
   onSignOut,
   soundEnabled,
   onToggleSound,
-  latencyMs
+  latencyMs,
+  audioStream
 }) => {
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true);
   const [liveLatency, setLiveLatency] = useState<number>(latencyMs || 24);
@@ -271,6 +273,8 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
             speechVolume={speechVolume}
             interimTranscript={interimTranscript}
             isMicActive={talaState === 'LISTENING' || talaState === 'SPEAKING' || talaState === 'PROCESSING' || continuousListening}
+            audioStream={audioStream}
+            latencyMs={latencyMs || liveLatency}
           />
         </div>
 

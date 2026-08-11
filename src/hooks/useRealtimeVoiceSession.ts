@@ -18,6 +18,7 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -92,6 +93,7 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
         pc.ontrack = (event) => {
           if (audioElRef.current && event.streams[0]) {
             audioElRef.current.srcObject = event.streams[0];
+            setAudioStream(event.streams[0]);
             updateSpeakingState(true);
           }
         };
@@ -108,6 +110,7 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
             },
           });
           localStreamRef.current = localStream;
+          setAudioStream((prev) => prev || localStream);
         }
 
         localStreamRef.current.getTracks().forEach((track) => {
@@ -342,6 +345,7 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
     isSpeaking,
     isListening,
     latencyMs,
+    audioStream,
     error,
     connect,
     disconnect,

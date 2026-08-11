@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatMessage, ConversationSession } from '../../types';
 import { conversationService } from '../../services/conversationService';
 import {
@@ -32,15 +32,30 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
   const [replyText, setReplyText] = useState<string>('');
   const [showClearModal, setShowClearModal] = useState<boolean>(false);
   const [isClearing, setIsClearing] = useState<boolean>(false);
-  const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
+  const [pinned_items, setPinnedItems] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('pinned_items');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
-  const togglePinMessage = (msgId: string) => {
-    setPinnedMessageIds((prev) =>
-      prev.includes(msgId) ? prev.filter((id) => id !== msgId) : [...prev, msgId]
+  useEffect(() => {
+    try {
+      localStorage.setItem('pinned_items', JSON.stringify(pinned_items));
+    } catch (e) {
+      console.warn('Failed to save pinned_items:', e);
+    }
+  }, [pinned_items]);
+
+  const togglePinMessage = (id: string) => {
+    setPinnedItems((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  const pinnedMessages = messages.filter((m) => pinnedMessageIds.includes(m.id));
+  const pinnedMessages = messages.filter((m) => pinned_items.includes(m.id));
 
   const handleConfirmClear = async () => {
     setIsClearing(true);
@@ -267,7 +282,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
 
                 {messages.map((msg) => {
                   const isUser = msg.role === 'user';
-                  const isPinned = pinnedMessageIds.includes(msg.id);
+                  const isPinned = pinned_items.includes(msg.id);
                   return (
                     <div
                       key={msg.id}
