@@ -198,7 +198,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12 font-inter">
       {/* Page Header */}
-      <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 backdrop-blur-md shadow-sm">
+      <div className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 backdrop-blur-md shadow-sm">
         <div>
           <h1 className="text-2xl sm:text-3xl font-medium text-white flex items-center gap-2.5 tracking-tight">
             <Settings className="w-6 h-6 sm:w-7 sm:h-7 text-[#00f0ff]" />
@@ -218,7 +218,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </div>
 
       {/* SECTION 1: AI GATEWAY (OPENROUTER) */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-6 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-6 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
@@ -237,7 +237,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         </div>
 
         {/* API Key Configuration */}
-        <div className="bg-[#050b14]/70 p-4 rounded-xl border border-[#00f0ff]/15 space-y-3">
+        <div className="bg-[#070e20] p-4 rounded-xl border border-[#00f0ff]/15 space-y-3">
           <label className="block text-xs font-medium text-gray-300 flex items-center gap-1.5">
             <Key className="w-3.5 h-3.5 text-[#00f0ff]" />
             <span>Custom OpenRouter API Key (Optional)</span>
@@ -252,7 +252,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                   ? 'Server environment key active (or paste custom sk-or-v1-...)'
                   : 'Paste OpenRouter API Key (sk-or-v1-...)'
               }
-              className="flex-1 bg-[#080d1a] border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none transition-colors"
+              className="flex-1 bg-[#0a1228] border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none transition-colors"
             />
             <button
               onClick={handleSaveKey}
@@ -296,7 +296,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 2: VOICE SYNTHESIS */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-6 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-6 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
@@ -367,7 +367,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                       ) : (
                         <>
                           {cloudVoices.length > 0 && (
-                            <optgroup label="🌟 TALA Cloud Natural Female Voices (Universal)">
+                            <optgroup label="TALA Cloud Natural Female Voices (Universal)">
                               {cloudVoices.map((v) => (
                                 <option key={v.name} value={v.name}>
                                   {v.name} ({v.lang})
@@ -547,7 +547,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 3: TALA PERSONA & PROMPT */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-3 pb-4 border-b border-[#00f0ff]/15">
           <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
             <Sparkles className="w-5 h-5" />
@@ -563,13 +563,13 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             rows={5}
             value={settings.systemInstruction}
             onChange={(e) => onUpdateSettings({ systemInstruction: e.target.value })}
-            className="w-full bg-[#050b14]/80 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl p-4 text-xs text-gray-200 leading-relaxed focus:outline-none transition-colors"
+            className="w-full bg-[#070e20] border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl p-4 text-xs text-gray-200 leading-relaxed focus:outline-none transition-colors"
           />
         </div>
       </section>
 
       {/* SECTION 4: GROUNDING KNOWLEDGE BASE & TEMPLATE DOWNLOADS */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
@@ -759,7 +759,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 4: BEHAVIOR TOGGLES */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-3 pb-4 border-b border-[#00f0ff]/15">
           <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
             <Sliders className="w-5 h-5" />
@@ -771,7 +771,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050b14]/70 border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
+          <label className="flex items-center justify-between p-4 rounded-xl bg-[#070e20] border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
             <span className="text-xs font-medium text-white">Auto Vocalize Replies</span>
             <input
               type="checkbox"
@@ -781,7 +781,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             />
           </label>
 
-          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050b14]/70 border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
+          <label className="flex items-center justify-between p-4 rounded-xl bg-[#070e20] border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
             <span className="text-xs font-medium text-white">Hands-Free Listening</span>
             <input
               type="checkbox"
@@ -791,7 +791,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             />
           </label>
 
-          <label className="flex items-center justify-between p-4 rounded-xl bg-[#050b14]/70 border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
+          <label className="flex items-center justify-between p-4 rounded-xl bg-[#070e20] border border-[#00f0ff]/15 cursor-pointer hover:border-[#00f0ff]/40 transition-all">
             <span className="text-xs font-medium text-white">Sound Effects</span>
             <input
               type="checkbox"
@@ -804,7 +804,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 5: SUPABASE SYNC */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
@@ -835,7 +835,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           )}
         </div>
 
-        <div className="bg-[#050b14]/70 p-4 rounded-xl border border-[#00f0ff]/15 flex items-center justify-between">
+        <div className="bg-[#070e20] p-4 rounded-xl border border-[#00f0ff]/15 flex items-center justify-between">
           <div className="text-xs">
             <span className="text-gray-400 block font-normal">Current Auth State:</span>
             <span className="text-white font-medium">
@@ -855,7 +855,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       </section>
 
       {/* SECTION 6: ADVANCED DIAGNOSTICS */}
-      <section className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
         <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">

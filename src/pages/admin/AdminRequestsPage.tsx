@@ -80,7 +80,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#080d1a] border border-[#00f0ff]/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(0,240,255,0.08)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0a1228] border border-[#00f0ff]/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(0,240,255,0.08)]">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
             <ClipboardList className="w-7 h-7 text-[#00f0ff]" />
@@ -101,7 +101,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
       </div>
 
       {/* Category & Status Filter Bar */}
-      <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-thin scrollbar-thumb-[#00f0ff]/20">
           {(['all', 'housekeeping', 'transportation', 'food', 'maintenance', 'activity', 'general'] as const).map((cat) => (
@@ -111,7 +111,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize whitespace-nowrap transition-all ${
                 selectedCategory === cat
                   ? 'bg-[#00f0ff] text-black font-bold shadow-[0_0_10px_rgba(0,240,255,0.3)]'
-                  : 'bg-[#0a0f1d] text-gray-300 hover:text-white border border-[#00f0ff]/15'
+                  : 'bg-[#070e20] text-gray-300 hover:text-white border border-[#00f0ff]/15'
               }`}
             >
               {cat}
@@ -126,7 +126,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as any)}
-            className="bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+            className="bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
           >
             <option value="all">All Statuses</option>
             <option value="new">New</option>
@@ -139,7 +139,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
 
       {/* Request Grid */}
       {filteredRequests.length === 0 ? (
-        <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-12 text-center text-gray-400 space-y-3">
+        <div className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-12 text-center text-gray-400 space-y-3">
           <ClipboardList className="w-12 h-12 text-[#00f0ff]/30 mx-auto" />
           <h3 className="text-lg font-bold text-white">No Guest Requests Found</h3>
           <p className="text-xs text-gray-400 max-w-md mx-auto">
@@ -162,7 +162,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
             return (
               <div
                 key={req.id}
-                className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 flex flex-col justify-between hover:border-[#00f0ff]/50 transition-all shadow-lg relative group"
+                className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-5 flex flex-col justify-between hover:border-[#00f0ff]/50 transition-all shadow-lg relative group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
@@ -195,7 +195,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                   </h3>
 
                   {req.description && (
-                    <p className="text-xs text-gray-300 mt-2 font-sans bg-[#050811] p-3 rounded-xl border border-[#00f0ff]/10 leading-relaxed">
+                    <p className="text-xs text-gray-300 mt-2 font-sans bg-[#070e20] p-3 rounded-xl border border-[#00f0ff]/10 leading-relaxed">
                       {req.description}
                     </p>
                   )}
@@ -221,7 +221,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                         className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all ${
                           req.status === st
                             ? 'bg-[#00f0ff] text-black'
-                            : 'bg-[#0a0f1d] text-gray-400 hover:text-white border border-[#00f0ff]/15'
+                            : 'bg-[#070e20] text-gray-400 hover:text-white border border-[#00f0ff]/15'
                         }`}
                       >
                         {st === 'in_progress' ? 'Prog' : st}
@@ -248,7 +248,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateSubmit}
-            className="bg-[#080d1a] border border-[#00f0ff]/40 rounded-2xl w-full max-w-lg p-6 space-y-4 relative shadow-[0_0_30px_rgba(0,240,255,0.2)]"
+            className="bg-[#0a1228] border border-[#00f0ff]/40 rounded-2xl w-full max-w-lg p-6 space-y-4 relative shadow-[0_0_30px_rgba(0,240,255,0.2)]"
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/20">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -274,7 +274,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                 placeholder="e.g. Extra Bath Towels, Airport Transfer, Breakfast Order"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                className="w-full bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
               />
             </div>
 
@@ -286,7 +286,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as GuestRequestCategory)}
-                  className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                  className="w-full bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
                 >
                   <option value="housekeeping">Housekeeping</option>
                   <option value="transportation">Transportation</option>
@@ -306,7 +306,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                   placeholder="Villa 101"
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
-                  className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                  className="w-full bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
                 />
               </div>
             </div>
@@ -320,7 +320,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                 placeholder="Sarah Jenkins"
                 value={guestLabel}
                 onChange={(e) => setGuestLabel(e.target.value)}
-                className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                className="w-full bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
               />
             </div>
 
@@ -333,7 +333,7 @@ export const AdminRequestsPage: React.FC<AdminRequestsPageProps> = ({
                 placeholder="Describe request details, delivery time, or staff notes..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                className="w-full bg-[#070e20] border border-[#00f0ff]/30 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
               />
             </div>
 

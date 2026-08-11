@@ -112,7 +112,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
                 : "Type command for TALA or click mic..."
             }
             disabled={isProcessing}
-            className="w-full px-4 py-2.5 bg-[#050b14]/70 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl text-xs sm:text-sm font-inter text-gray-100 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-[#00f0ff]/30 backdrop-blur-md transition-colors"
+            className="w-full px-4 py-2.5 bg-[#070e20]/90 border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl text-xs sm:text-sm font-inter text-gray-100 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-[#00f0ff]/30 backdrop-blur-md transition-colors"
           />
         </div>
 

@@ -121,7 +121,24 @@ function speakWebSpeech(
     return;
   }
 
-  const utterance = new SpeechSynthesisUtterance(cleanedText);
+  // Cancel any lingering or stuck speech synthesis immediately
+  window.speechSynthesis.cancel();
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+  }
+
+  // Additional text cleaning to strip any raw symbols/emojis that slow down TTS engine
+  const sanitisedText = cleanedText
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+    .trim();
+
+  if (!sanitisedText) {
+    if (onEnd) onEnd();
+    if (resolve) resolve();
+    return;
+  }
+
+  const utterance = new SpeechSynthesisUtterance(sanitisedText);
   utterance.pitch = pitch;
   utterance.rate = rate;
 
@@ -132,7 +149,7 @@ function speakWebSpeech(
     selected = voices.find((v) => v.name === voiceName || v.voiceURI === voiceName);
   }
 
-  // Only fall back to best female voice if the user's selected voice was not found
+  // Fallback to best female voice if requested voice isn't present
   if (!selected) {
     selected = getBestFemaleVoice(voices) || voices[0];
   }
@@ -141,17 +158,28 @@ function speakWebSpeech(
     utterance.voice = selected;
   }
 
-  utterance.onend = () => {
+  let completed = false;
+  const finish = () => {
+    if (completed) return;
+    completed = true;
     if (onEnd) onEnd();
     if (resolve) resolve();
   };
 
+  utterance.onstart = () => {
+    // Resume again on start in case browser paused audio context
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+  };
+
+  utterance.onend = finish;
   utterance.onerror = (e) => {
-    console.warn('Speech synthesis error:', e);
-    if (onEnd) onEnd();
-    if (resolve) resolve();
+    console.warn('Speech synthesis notice:', e);
+    finish();
   };
 
+  // Immediate execution call
   window.speechSynthesis.speak(utterance);
 }
 

@@ -167,7 +167,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#080d1a] border border-[#00f0ff]/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(0,240,255,0.08)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0a1228] border border-[#00f0ff]/30 rounded-2xl p-5 shadow-[0_0_20px_rgba(0,240,255,0.08)]">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
             <BookOpen className="w-7 h-7 text-[#00f0ff]" />
@@ -195,7 +195,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
       )}
 
       {/* Grounding Template & Export Controls */}
-      <div className="bg-[#080d1a] border border-[#00f0ff]/25 rounded-2xl p-5 space-y-4 shadow-md">
+      <div className="bg-[#0a1228] border border-[#00f0ff]/25 rounded-2xl p-5 space-y-4 shadow-md">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
@@ -240,7 +240,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
           <button
             onClick={handleDownloadFullTxt}
-            className="p-3.5 rounded-xl bg-[#050811] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+            className="p-3.5 rounded-xl bg-[#070e20] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
           >
             <div>
               <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
@@ -254,7 +254,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
           <button
             onClick={handleDownloadFullMd}
-            className="p-3.5 rounded-xl bg-[#050811] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+            className="p-3.5 rounded-xl bg-[#070e20] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
           >
             <div>
               <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
@@ -268,7 +268,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
           <button
             onClick={handleDownloadFullJson}
-            className="p-3.5 rounded-xl bg-[#050811] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+            className="p-3.5 rounded-xl bg-[#070e20] border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
           >
             <div>
               <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
@@ -282,7 +282,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
           <button
             onClick={handleDownloadTemplateTxt}
-            className="p-3.5 rounded-xl bg-[#050811] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+            className="p-3.5 rounded-xl bg-[#070e20] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
           >
             <div>
               <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
@@ -296,7 +296,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
           <button
             onClick={handleDownloadTemplateMd}
-            className="p-3.5 rounded-xl bg-[#050811] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+            className="p-3.5 rounded-xl bg-[#070e20] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
           >
             <div>
               <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
@@ -310,7 +310,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
           <button
             onClick={handleDownloadTemplateJson}
-            className="p-3.5 rounded-xl bg-[#050811] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
+            className="p-3.5 rounded-xl bg-[#070e20] border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
           >
             <div>
               <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
@@ -325,7 +325,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
       </div>
 
       {/* Category Filter Tabs & Search Bar */}
-      <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-4 space-y-3">
+      <div className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-4 space-y-3">
         {/* Search Input */}
         <div className="relative">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -334,7 +334,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
             placeholder="Search knowledge documents or content..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#050811] border border-[#00f0ff]/20 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
+            className="w-full bg-[#070e20] border border-[#00f0ff]/20 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
           />
         </div>
 
@@ -347,7 +347,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 selectedCategory === cat.value
                   ? 'bg-[#00f0ff] text-black font-bold shadow-[0_0_10px_rgba(0,240,255,0.3)]'
-                  : 'bg-[#0a0f1d] text-gray-300 hover:text-white border border-[#00f0ff]/15'
+                  : 'bg-[#070e20] text-gray-300 hover:text-white border border-[#00f0ff]/15'
               }`}
             >
               {cat.label}
@@ -358,7 +358,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
       {/* Knowledge Documents Grid */}
       {filteredFiles.length === 0 ? (
-        <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-12 text-center text-gray-400 space-y-3">
+        <div className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-12 text-center text-gray-400 space-y-3">
           <BookOpen className="w-12 h-12 text-[#00f0ff]/30 mx-auto" />
           <h3 className="text-lg font-bold text-white">No Knowledge Documents Found</h3>
           <p className="text-xs text-gray-400 max-w-md mx-auto">
@@ -381,7 +381,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
             return (
               <div
                 key={doc.id}
-                className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-4 flex flex-col justify-between hover:border-[#00f0ff]/50 transition-all shadow-md group"
+                className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-4 flex flex-col justify-between hover:border-[#00f0ff]/50 transition-all shadow-md group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -397,7 +397,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
                     {doc.name}
                   </h3>
 
-                  <p className="text-xs text-gray-400 line-clamp-3 mt-1.5 font-sans leading-relaxed bg-[#050811] p-2.5 rounded-xl border border-[#00f0ff]/10">
+                  <p className="text-xs text-gray-400 line-clamp-3 mt-1.5 font-sans leading-relaxed bg-[#070e20] p-2.5 rounded-xl border border-[#00f0ff]/10">
                     {doc.content || 'Empty document content.'}
                   </p>
                 </div>
@@ -442,7 +442,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
       {/* Upload Modal */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#080d1a] border border-[#00f0ff]/40 rounded-2xl w-full max-w-lg p-6 space-y-4 relative shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+          <div className="bg-[#0a1228] border border-[#00f0ff]/40 rounded-2xl w-full max-w-lg p-6 space-y-4 relative shadow-[0_0_30px_rgba(0,240,255,0.2)]">
             <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/20">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Upload className="w-5 h-5 text-[#00f0ff]" />
@@ -464,7 +464,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
               <select
                 value={uploadCategory}
                 onChange={(e) => setUploadCategory(e.target.value as KnowledgeCategory)}
-                className="w-full bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                className="w-full bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
               >
                 {CATEGORIES.filter((c) => c.value !== 'All').map((c) => (
                   <option key={c.value} value={c.value}>
@@ -485,7 +485,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
               className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
                 dragOver
                   ? 'border-[#00f0ff] bg-[#00f0ff]/10'
-                  : 'border-[#00f0ff]/30 hover:border-[#00f0ff] bg-[#050811]'
+                  : 'border-[#00f0ff]/30 hover:border-[#00f0ff] bg-[#070e20]'
               }`}
             >
               <Upload className="w-8 h-8 text-[#00f0ff] mx-auto mb-2 animate-bounce" />
@@ -509,7 +509,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
       {/* Preview Modal */}
       {previewDoc && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#080d1a] border border-[#00f0ff]/40 rounded-2xl w-full max-w-2xl p-6 space-y-4 relative shadow-[0_0_30px_rgba(0,240,255,0.2)] max-h-[85vh] flex flex-col">
+          <div className="bg-[#0a1228] border border-[#00f0ff]/40 rounded-2xl w-full max-w-2xl p-6 space-y-4 relative shadow-[0_0_30px_rgba(0,240,255,0.2)] max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-[#00f0ff]/20 shrink-0">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -528,7 +528,7 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-[#050811] p-4 rounded-xl border border-[#00f0ff]/20 text-xs font-mono text-gray-200 whitespace-pre-wrap leading-relaxed">
+            <div className="flex-1 overflow-y-auto bg-[#070e20] p-4 rounded-xl border border-[#00f0ff]/20 text-xs font-mono text-gray-200 whitespace-pre-wrap leading-relaxed">
               {previewDoc.content}
             </div>
 

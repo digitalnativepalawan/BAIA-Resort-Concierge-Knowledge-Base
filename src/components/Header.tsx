@@ -114,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({
   const currentModelLabel = settings.selectedOpenRouterModel || 'openrouter/free';
 
   return (
-    <header className="relative z-20 w-full bg-[#0d1b2b]/60 border-b border-[#00f0ff]/20 px-4 sm:px-8 py-3.5 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.5)]">
+    <header className="relative z-20 w-full bg-[#0a1228]/80 border-b border-[#00f0ff]/20 px-4 sm:px-8 py-3.5 backdrop-blur-md shadow-[0_4px_25px_rgba(0,0,0,0.5)]">
       <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         
         {/* LEFT COLUMN [Branding & Status] */}
@@ -140,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* CENTER COLUMN [Dual Digital Telemetry Clocks] */}
         <div className="md:col-span-4 flex flex-col items-center justify-center">
-          <div className="bg-[#050b14]/70 border border-[#00f0ff]/20 rounded-xl px-4 py-2 backdrop-blur-md shadow-sm flex flex-col items-center gap-1.5 w-full max-w-md">
+          <div className="bg-[#070e20] border border-[#00f0ff]/20 rounded-xl px-4 py-2 backdrop-blur-md shadow-sm flex flex-col items-center gap-1.5 w-full max-w-md">
             {/* Live UTC Date */}
             <div className="flex items-center gap-2 text-[11px] font-normal tracking-wide text-cyan-200/90 border-b border-[#00f0ff]/15 pb-1 w-full justify-center">
               <Clock className="w-3.5 h-3.5 text-[#00f0ff]/80" />
@@ -176,11 +176,11 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="md:col-span-4 flex items-center justify-start md:justify-end gap-2.5 sm:gap-3">
           {/* Live Telemetry Metrics Badges */}
           <div className="hidden lg:flex items-center gap-2 font-inter text-[10px] tracking-wide">
-            <div className="flex flex-col items-end px-2.5 py-1 bg-[#0a0f1d]/60 border border-[#00f0ff]/15 rounded-lg">
+            <div className="flex flex-col items-end px-2.5 py-1 bg-[#0f1d3a]/80 border border-[#00f0ff]/15 rounded-lg">
               <span className="text-gray-400 text-[8px] font-light">Engine</span>
               <span className="text-[#00f0ff] font-medium">OpenRouter</span>
             </div>
-            <div className="flex flex-col items-end px-2.5 py-1 bg-[#0a0f1d]/60 border border-[#00f0ff]/15 rounded-lg">
+            <div className="flex flex-col items-end px-2.5 py-1 bg-[#0f1d3a]/80 border border-[#00f0ff]/15 rounded-lg">
               <span className="text-gray-400 text-[8px] font-light">Latency</span>
               <span className="text-emerald-400 font-medium">12ms</span>
             </div>
@@ -190,7 +190,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2">
             {/* Supabase Auth Pill */}
             {currentUser ? (
-              <div className="flex items-center gap-2 bg-[#0d1b2b]/80 border border-emerald-500/30 rounded-xl px-2.5 py-1.5">
+              <div className="flex items-center gap-2 bg-[#0f1d3a]/80 border border-emerald-500/30 rounded-xl px-2.5 py-1.5">
                 {currentUser.photoURL ? (
                   <img
                     src={currentUser.photoURL}
@@ -232,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => setSettings((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
               title={settings.soundEnabled ? "Mute Audio FX" : "Enable Audio FX"}
-              className="p-2 rounded-xl bg-[#0d1b2b]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all active:scale-95"
+              className="p-2 rounded-xl bg-[#0f1d3a]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all active:scale-95"
             >
               {settings.soundEnabled ? (
                 <Volume2 className="w-4 h-4 text-[#00f0ff]" />

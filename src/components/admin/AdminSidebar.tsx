@@ -25,7 +25,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onMobileClose }) => 
   ];
 
   return (
-    <aside className="w-64 bg-[#0d1b2b]/80 border-r border-[#00f0ff]/20 flex flex-col h-full select-none shrink-0 text-gray-200 font-inter backdrop-blur-md">
+    <aside className="w-64 bg-[#0f1d3a]/90 border-r border-[#00f0ff]/20 flex flex-col h-full select-none shrink-0 text-gray-200 font-inter backdrop-blur-md">
       {/* Brand Header */}
       <div className="p-4 border-b border-[#00f0ff]/15 flex items-center justify-between">
         <KapwaLogo />
@@ -77,7 +77,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onMobileClose }) => 
       </nav>
 
       {/* Bottom Switch to Guest View */}
-      <div className="p-4 border-t border-[#00f0ff]/15 bg-[#050811]/40">
+      <div className="p-4 border-t border-[#00f0ff]/15 bg-[#0a1228]/60">
         <Link
           to="/"
           onClick={onMobileClose}

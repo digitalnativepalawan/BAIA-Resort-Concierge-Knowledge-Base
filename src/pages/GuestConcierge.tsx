@@ -13,7 +13,12 @@ import {
   VolumeX,
   LogIn,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  Utensils,
+  Bus,
+  Bike,
+  Compass,
+  Clock
 } from 'lucide-react';
 
 interface GuestConciergeProps {
@@ -34,11 +39,31 @@ interface GuestConciergeProps {
 }
 
 const GUEST_QUICK_CHIPS = [
-  { label: '🌱 Do you have vegan food?', prompt: 'Do you have vegan or vegetarian food options at BAIA Resort?' },
-  { label: '🚐 How to get here from El Nido?', prompt: 'How do I get to BAIA Resort from El Nido or Puerto Princesa?' },
-  { label: '🛵 Can I rent a motorbike?', prompt: 'Can I rent a motorbike in San Vicente to explore Long Beach?' },
-  { label: '🏝️ What island tours do you offer?', prompt: 'What island hopping tours and water activities do you offer?' },
-  { label: '🏨 What are check-in times?', prompt: 'What are your check-in and checkout times and guest services?' },
+  {
+    icon: Utensils,
+    label: 'Do you have vegan food?',
+    prompt: 'Do you have vegan or vegetarian food options at BAIA Resort?'
+  },
+  {
+    icon: Bus,
+    label: 'How to get here from El Nido?',
+    prompt: 'How do I get to BAIA Resort from El Nido or Puerto Princesa?'
+  },
+  {
+    icon: Bike,
+    label: 'Can I rent a motorbike?',
+    prompt: 'Can I rent a motorbike in San Vicente to explore Long Beach?'
+  },
+  {
+    icon: Compass,
+    label: 'What island tours do you offer?',
+    prompt: 'What island hopping tours and water activities do you offer?'
+  },
+  {
+    icon: Clock,
+    label: 'What are check-in times?',
+    prompt: 'What are your check-in and checkout times and guest services?'
+  },
 ];
 
 export const GuestConcierge: React.FC<GuestConciergeProps> = ({
@@ -58,12 +83,12 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
   onToggleSound,
 }) => {
   return (
-    <div className="min-h-screen bg-[#050811] text-[#e0e7ff] flex flex-col font-inter selection:bg-[#00f0ff] selection:text-black relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#0a1228] text-[#e0e7ff] flex flex-col font-inter selection:bg-[#00f0ff] selection:text-black relative overflow-x-hidden">
       {/* Background Subtle Radial Glow Accent */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#00f0ff]/10 via-[#080d1a]/80 to-[#050811]" />
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#00f0ff]/10 via-[#0f1d3a]/90 to-[#0a1228]" />
 
       {/* Top Guest Header Bar */}
-      <header className="relative z-20 bg-[#0d1b2b]/60 border-b border-[#00f0ff]/20 px-4 sm:px-8 py-3 flex items-center justify-between backdrop-blur-md shadow-sm gap-4">
+      <header className="relative z-20 bg-[#0f1d3a]/80 border-b border-[#00f0ff]/20 px-4 sm:px-8 py-3 flex items-center justify-between backdrop-blur-md shadow-sm gap-4">
         {/* Brand Identity / Kapwa Logo */}
         <KapwaLogo />
 
@@ -77,7 +102,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           {/* Sound FX Toggle */}
           <button
             onClick={onToggleSound}
-            className="p-2 rounded-xl bg-[#0d1b2b]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs"
+            className="p-2 rounded-xl bg-[#0a1228]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs"
             title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-[#00f0ff]" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
@@ -96,7 +121,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           {currentUser ? (
             <button
               onClick={onSignOut}
-              className="p-2 rounded-xl bg-[#0d1b2b]/80 border border-emerald-500/30 text-emerald-400 hover:text-red-400 transition-colors"
+              className="p-2 rounded-xl bg-[#0a1228]/80 border border-emerald-500/30 text-emerald-400 hover:text-red-400 transition-colors"
               title={`Signed in as ${currentUser.name || currentUser.email}. Click to sign out.`}
             >
               <UserIcon className="w-4 h-4" />
@@ -104,7 +129,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           ) : (
             <button
               onClick={onSignIn}
-              className="p-2 rounded-xl bg-[#0d1b2b]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all"
+              className="p-2 rounded-xl bg-[#0a1228]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all"
               title="Sign in to Supabase"
             >
               <LogIn className="w-4 h-4" />
@@ -137,16 +162,20 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
 
         {/* Quick Hospitality Action Chips */}
         <div className="w-full max-w-lg flex flex-wrap items-center justify-center gap-2.5 pt-2">
-          {GUEST_QUICK_CHIPS.map((chip, idx) => (
-            <button
-              key={idx}
-              onClick={() => onSendMessage(chip.prompt)}
-              disabled={talaState === 'PROCESSING'}
-              className="px-4 py-2 rounded-xl bg-[#0d1b2b]/60 hover:bg-[#00f0ff]/15 border border-[#00f0ff]/20 text-cyan-200 hover:text-white hover:border-[#00f0ff]/50 transition-all text-xs font-medium backdrop-blur-md shadow-sm active:scale-95 disabled:opacity-50"
-            >
-              {chip.label}
-            </button>
-          ))}
+          {GUEST_QUICK_CHIPS.map((chip, idx) => {
+            const Icon = chip.icon;
+            return (
+              <button
+                key={idx}
+                onClick={() => onSendMessage(chip.prompt)}
+                disabled={talaState === 'PROCESSING'}
+                className="px-4 py-2 rounded-xl bg-[#0f1d3a]/90 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/25 text-cyan-100 hover:text-white hover:border-[#00f0ff]/50 transition-all text-xs font-medium backdrop-blur-md shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-2 group"
+              >
+                <Icon className="w-3.5 h-3.5 text-[#00f0ff] group-hover:scale-110 transition-transform shrink-0" />
+                <span>{chip.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Conversation Message Stream */}
@@ -159,7 +188,7 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
         </div>
 
         {/* Bottom Command Bar */}
-        <div className="w-full max-w-2xl bg-[#0d1b2b]/70 border border-[#00f0ff]/25 rounded-2xl p-4 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+        <div className="w-full max-w-2xl bg-[#0f1d3a]/90 border border-[#00f0ff]/25 rounded-2xl p-4 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
           <CommandBar
             state={talaState}
             onMicToggle={onCoreClick}

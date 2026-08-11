@@ -57,7 +57,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col space-y-4">
       {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-4 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-4 shrink-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
             <MessageSquare className="w-6 h-6 text-[#00f0ff]" />
@@ -77,7 +77,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${
                 activeFilter === filter
                   ? 'bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]'
-                  : 'bg-[#0a0f1d] text-gray-400 hover:text-white border border-[#00f0ff]/10'
+                  : 'bg-[#070e20] text-gray-400 hover:text-white border border-[#00f0ff]/10'
               }`}
             >
               {filter.replace('_', ' ')}
@@ -89,7 +89,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
       {/* Main Inbox Container */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 overflow-hidden">
         {/* Left List Pane */}
-        <div className="lg:col-span-4 bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-3 flex flex-col min-h-0 overflow-hidden">
+        <div className="lg:col-span-4 bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-3 flex flex-col min-h-0 overflow-hidden">
           {/* Search Box */}
           <div className="relative mb-3 shrink-0">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -98,7 +98,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
               placeholder="Search guest or room..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#050811] border border-[#00f0ff]/20 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
+              className="w-full bg-[#070e20] border border-[#00f0ff]/20 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
             />
           </div>
 
@@ -113,7 +113,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
               sessions.map((sess) => (
                 <div
                   key={sess.id}
-                  className="p-3.5 rounded-xl bg-[#0a0f1d] border border-[#00f0ff]/30 shadow-md cursor-pointer hover:border-[#00f0ff] transition-all"
+                  className="p-3.5 rounded-xl bg-[#070e20] border border-[#00f0ff]/30 shadow-md cursor-pointer hover:border-[#00f0ff] transition-all"
                 >
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-bold text-white truncate max-w-[160px]">
@@ -149,7 +149,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
         </div>
 
         {/* Right Active Conversation Thread View */}
-        <div className="lg:col-span-8 bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-4 flex flex-col min-h-0 overflow-hidden">
+        <div className="lg:col-span-8 bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-4 flex flex-col min-h-0 overflow-hidden">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-400 text-sm">
               <MessageSquare className="w-12 h-12 text-[#00f0ff]/30 mb-3" />
@@ -200,7 +200,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
                         className={`max-w-[80%] rounded-2xl p-3.5 text-xs font-sans leading-relaxed shadow-lg ${
                           isUser
                             ? 'bg-[#00f0ff]/15 text-white border border-[#00f0ff]/30 rounded-tr-none'
-                            : 'bg-[#0a0f1d] text-gray-200 border border-[#00f0ff]/20 rounded-tl-none'
+                            : 'bg-[#070e20] text-gray-200 border border-[#00f0ff]/20 rounded-tl-none'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3 text-[10px] font-mono text-gray-400 mb-1">
@@ -232,7 +232,7 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
                   placeholder="Send staff response or test prompt as TALA..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className="flex-1 bg-[#050811] border border-[#00f0ff]/30 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
+                  className="flex-1 bg-[#070e20] border border-[#00f0ff]/30 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00f0ff]"
                 />
                 <button
                   type="submit"

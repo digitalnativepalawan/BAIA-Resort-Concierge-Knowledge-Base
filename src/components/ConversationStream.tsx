@@ -26,9 +26,9 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl overflow-hidden backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-inter">
+    <div className="w-full flex-1 flex flex-col bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl overflow-hidden backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-inter">
       {/* Stream Header */}
-      <div className="px-4 py-3 bg-[#080d1a]/80 border-b border-[#00f0ff]/15 flex items-center justify-between text-xs">
+      <div className="px-4 py-3 bg-[#0a1228]/90 border-b border-[#00f0ff]/15 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2 text-[#00f0ff]">
           <Sparkles className="w-3.5 h-3.5 text-[#ff007f]" />
           <span className="font-medium tracking-wide">Communicator Thread</span>
@@ -76,8 +76,8 @@ export const ConversationStream: React.FC<ConversationStreamProps> = ({
                 <div
                   className={`relative max-w-[85%] sm:max-w-[78%] px-4 py-3 rounded-2xl text-xs sm:text-sm font-normal leading-relaxed shadow-md ${
                     isTala
-                      ? 'bg-[#0a1124]/90 border border-[#00f0ff]/25 text-gray-100 rounded-tl-none shadow-sm'
-                      : 'bg-gradient-to-r from-[#ff007f]/15 to-[#8000ff]/15 border border-[#ff007f]/30 text-white rounded-tr-none'
+                      ? 'bg-[#070e20]/95 border border-[#00f0ff]/25 text-gray-100 rounded-tl-none shadow-sm'
+                      : 'bg-gradient-to-r from-[#ff007f]/20 to-[#8000ff]/20 border border-[#ff007f]/30 text-white rounded-tr-none'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">

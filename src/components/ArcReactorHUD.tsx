@@ -205,7 +205,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
 
         {/* Outer Sci-Fi Ring Frame */}
         <div
-          className="absolute inset-0 rounded-full border border-[#00f0ff]/20 bg-[#050811]/60 backdrop-blur-md shadow-[0_0_50px_rgba(0,240,255,0.08)] transition-all duration-500"
+          className="absolute inset-0 rounded-full border border-[#00f0ff]/20 bg-[#0a1228]/80 backdrop-blur-md shadow-[0_0_50px_rgba(0,240,255,0.08)] transition-all duration-500"
           style={{ transform: `scale(${scaleValue})` }}
         />
 
@@ -319,7 +319,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
           />
 
           {/* Glass Lens Overlay with Sci-Fi Grid Lines */}
-          <div className="absolute inset-0 rounded-full border-2 border-[#00f0ff]/60 group-hover:border-[#00f0ff] bg-[#050811]/40 backdrop-blur-sm flex items-center justify-center shadow-inner transition-all duration-300">
+          <div className="absolute inset-0 rounded-full border-2 border-[#00f0ff]/60 group-hover:border-[#00f0ff] bg-[#070e20]/60 backdrop-blur-sm flex items-center justify-center shadow-inner transition-all duration-300">
             
             {/* Core Symbol / State Display */}
             <div className="flex flex-col items-center justify-center text-center p-2 z-30">
@@ -358,7 +358,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
         </button>
 
         {/* Orbiting HUD Status Tags */}
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-[#0d1b2b]/90 border border-[#00f0ff]/40 backdrop-blur-md shadow-lg text-xs font-inter text-cyan-200 font-semibold tracking-wide whitespace-nowrap flex items-center gap-2">
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-full bg-[#0f1d3a]/95 border border-[#00f0ff]/40 backdrop-blur-md shadow-lg text-xs font-inter text-cyan-200 font-semibold tracking-wide whitespace-nowrap flex items-center gap-2">
           {state === 'IDLE' && (
             <>
               <span className="w-2 h-2 rounded-full bg-[#00f0ff] animate-ping" />
@@ -394,7 +394,7 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
 
       {/* Real-time Interim Voice Transcript Display during listening */}
       {state === 'LISTENING' && interimTranscript && (
-        <div className="mt-4 px-4 py-2 rounded-lg bg-[#050811]/80 border border-[#00f0ff]/50 text-xs font-mono text-[#00f0ff] max-w-sm text-center animate-pulse shadow-[0_0_20px_rgba(0,240,255,0.15)]">
+        <div className="mt-4 px-4 py-2 rounded-lg bg-[#070e20]/90 border border-[#00f0ff]/50 text-xs font-mono text-[#00f0ff] max-w-sm text-center animate-pulse shadow-[0_0_20px_rgba(0,240,255,0.15)]">
           <span className="text-[#ff007f] font-bold mr-1">[HEARING]:</span> "{interimTranscript}"
         </div>
       )}

@@ -45,7 +45,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-6 font-inter">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-6 backdrop-blur-md shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 backdrop-blur-md shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -73,7 +73,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       {/* Summary Metrics Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Guest Conversations */}
-        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
+        <div className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-300">
               Guest Conversations
@@ -89,7 +89,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         </div>
 
         {/* Metric 2: Questions Answered */}
-        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
+        <div className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-300">
               Questions Answered
@@ -103,7 +103,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         </div>
 
         {/* Metric 3: Guest Requests */}
-        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
+        <div className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-300">
               Guest Requests
@@ -117,7 +117,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         </div>
 
         {/* Metric 4: Needs Staff Attention */}
-        <div className="bg-[#0d1b2b]/60 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
+        <div className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-5 backdrop-blur-md shadow-sm hover:border-[#00f0ff]/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-300">
               Needs Staff Attention
@@ -134,7 +134,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       {/* Main Grid: Recent Conversations & Guest Requests */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent Conversations Card */}
-        <div className="lg:col-span-6 bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 flex flex-col justify-between">
+        <div className="lg:col-span-6 bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
               <div>
@@ -190,7 +190,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         </div>
 
         {/* Recent Guest Requests Card */}
-        <div className="lg:col-span-6 bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5 flex flex-col justify-between">
+        <div className="lg:col-span-6 bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-[#00f0ff]/15">
               <div>
@@ -250,7 +250,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       </div>
 
       {/* System Status Section (Human-Readable) */}
-      <div className="bg-[#080d1a] border border-[#00f0ff]/20 rounded-2xl p-5">
+      <div className="bg-[#0a1228] border border-[#00f0ff]/20 rounded-2xl p-5">
         <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
           <Activity className="w-4 h-4 text-[#00f0ff]" />
           <span>System & Infrastructure Status</span>
@@ -258,7 +258,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: AI */}
-          <div className="bg-[#0a0f1d] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
+          <div className="bg-[#070e20] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff]">
               <Cpu className="w-5 h-5" />
             </div>
@@ -272,7 +272,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
 
           {/* Card 2: Knowledge Base */}
-          <div className="bg-[#0a0f1d] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
+          <div className="bg-[#070e20] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff]">
               <BookOpen className="w-5 h-5" />
             </div>
@@ -286,7 +286,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
 
           {/* Card 3: Voice Synthesizer */}
-          <div className="bg-[#0a0f1d] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
+          <div className="bg-[#070e20] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff]">
               <Volume2 className="w-5 h-5" />
             </div>
@@ -300,7 +300,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
           </div>
 
           {/* Card 4: Cloud Sync */}
-          <div className="bg-[#0a0f1d] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
+          <div className="bg-[#070e20] border border-[#00f0ff]/15 rounded-xl p-3.5 flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff]">
               <Cloud className="w-5 h-5" />
             </div>

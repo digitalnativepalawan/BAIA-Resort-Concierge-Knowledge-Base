@@ -40,7 +40,7 @@ import { soundEffects } from './utils/soundEffects';
 import { cleanTextForSpeech } from './utils/textUtils';
 
 const DEFAULT_SYSTEM_INSTRUCTION =
-  "You are TALA, the warm, helpful AI concierge for BAIA Resort in San Vicente, Palawan. Engage with guests in a friendly, conversational, and hospitable manner. Answer guest queries concisely (2 to 4 sentences) and accurately using the BAIA knowledge base (such as vegan & dining options, transportation from El Nido/Puerto Princesa, motorbike rentals, island hopping tours, check-in, and resort amenities). Never repeat robotic disclaimers or canned phrases; speak naturally like an attentive front-desk host.";
+  "You are TALA, the warm, highly attentive, and agentic AI Concierge for BAIA Resort in San Vicente, Palawan. You speak in a natural, friendly, conversational tone like a warm resort manager on a live call. Speak concisely (1 to 3 sentences maximum) so your voice response is fast and fluid. Never output long lists, bullet points, or canned disclaimers. Always answer guest queries accurately using the BAIA knowledge base. When a guest asks for a resort service (such as extra towels, airport transfer, motorbike rental, breakfast, or housekeeping), confirm warmly and state that you have logged the request for the front desk team to take care of immediately.";
 
 export default function App() {
   const [state, setState] = useState<TalaState>('IDLE');
@@ -115,6 +115,7 @@ export default function App() {
   const silenceCountRef = useRef<number>(0);
   const isSpeakingRef = useRef<boolean>(false);
   const micBargeInCleanupRef = useRef<(() => void) | null>(null);
+  const speechDebounceTimerRef = useRef<any>(null);
 
   useEffect(() => {
     isSpeakingRef.current = state === 'SPEAKING';
@@ -434,7 +435,50 @@ export default function App() {
     async (promptText: string) => {
       if (!promptText.trim()) return;
 
+      if (speechDebounceTimerRef.current) {
+        clearTimeout(speechDebounceTimerRef.current);
+        speechDebounceTimerRef.current = null;
+      }
+
       stopSpeech();
+
+      // Agentic Guest Request Creation: Automatically log actionable resort requests
+      const lowerPrompt = promptText.toLowerCase();
+      if (
+        lowerPrompt.includes('towel') ||
+        lowerPrompt.includes('transfer') ||
+        lowerPrompt.includes('shuttle') ||
+        lowerPrompt.includes('motorbike') ||
+        lowerPrompt.includes('scooter') ||
+        lowerPrompt.includes('breakfast') ||
+        lowerPrompt.includes('housekeeping') ||
+        lowerPrompt.includes('laundry')
+      ) {
+        let category: 'housekeeping' | 'transportation' | 'food' | 'general' = 'general';
+        if (lowerPrompt.includes('towel') || lowerPrompt.includes('housekeeping') || lowerPrompt.includes('laundry')) {
+          category = 'housekeeping';
+        } else if (lowerPrompt.includes('transfer') || lowerPrompt.includes('shuttle') || lowerPrompt.includes('motorbike')) {
+          category = 'transportation';
+        } else if (lowerPrompt.includes('breakfast')) {
+          category = 'food';
+        }
+
+        const newAgenticRequest: GuestRequest = {
+          id: `req-${Date.now()}`,
+          title: promptText.length > 45 ? promptText.substring(0, 42) + '...' : promptText,
+          description: `Guest voice request via TALA Concierge: "${promptText}"`,
+          category,
+          guestLabel: currentUser?.name || 'Guest',
+          room: 'Villa 101',
+          status: 'new',
+          createdAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        requestService.saveRequest(newAgenticRequest).then((updated) => {
+          setGuestRequests(updated);
+          addLog(`[ AGENTIC ACTION ]: Guest service request created for ${category}`, 'success');
+        });
+      }
 
       const userMsg: ChatMessage = {
         id: Math.random().toString(36).substring(2, 9),
@@ -451,7 +495,7 @@ export default function App() {
       soundEffects.playProcessingBeep();
 
       try {
-        const historyForApi = messages.slice(-10).map((m) => ({
+        const historyForApi = messages.slice(-8).map((m) => ({
           role: m.role,
           text: m.text
         }));
@@ -465,7 +509,7 @@ export default function App() {
             .map((f, idx) => `--- GROUNDED DOCUMENT ${idx + 1} (${f.category || 'General'}): ${f.name} ---\n${f.content}`)
             .join('\n\n');
 
-          groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. When asked about property information, San Vicente, transportation, amenities, food, or activities contained in these documents, give accurate, direct, warm, structured answers based on document text.\n3. Never invent property details not present in the knowledge base. When appropriate, state that resort staff can assist.`;
+          groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. Keep spoken responses short, natural, warm, and conversational (1 to 3 sentences maximum).\n3. Never invent property details not present in the knowledge base. Confirm guest service requests warmly.`;
         }
 
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
@@ -591,9 +635,31 @@ export default function App() {
           }
         }
 
-        if (currentInterim) setInterimTranscript(currentInterim);
+        if (currentInterim) {
+          setInterimTranscript(currentInterim);
+
+          // Fast silence-debounce auto-submit: If guest pauses for 650ms, auto-send prompt without waiting for browser isFinal
+          if (speechDebounceTimerRef.current) clearTimeout(speechDebounceTimerRef.current);
+          const currentText = currentInterim.trim();
+          if (currentText.length > 2) {
+            speechDebounceTimerRef.current = setTimeout(() => {
+              addLog(`[ FAST VOICE SUBMIT ]: "${currentText}"`, 'success');
+              setInterimTranscript('');
+              try {
+                recognition.stop();
+              } catch (e) {}
+              recognitionRef.current = null;
+              const cleanPrompt = currentText.replace(/^(wake up tala|hey tala|tala)[,!\s]*/i, '');
+              sendPromptToTala(cleanPrompt.trim() || currentText);
+            }, 650);
+          }
+        }
 
         if (finalScript) {
+          if (speechDebounceTimerRef.current) {
+            clearTimeout(speechDebounceTimerRef.current);
+            speechDebounceTimerRef.current = null;
+          }
           silenceCountRef.current = 0;
           setInterimTranscript('');
           addLog(`[ SPEECH DETECTED ]: "${finalScript}"`, 'success');
@@ -602,12 +668,10 @@ export default function App() {
           } catch (e) {}
           recognitionRef.current = null;
 
-          // Wake phrase check
           const lower = finalScript.trim().toLowerCase();
           if (lower === 'wake up tala' || lower === 'wake up' || lower === 'hey tala' || lower === 'tala') {
             speakText("Hello! I'm awake and ready to help. What can I do for you today at BAIA Resort?");
           } else {
-            // Strip leading wake phrase if present
             const cleanPrompt = finalScript.replace(/^(wake up tala|hey tala|tala)[,!\s]*/i, '');
             sendPromptToTala(cleanPrompt.trim() || finalScript.trim());
           }
@@ -618,17 +682,6 @@ export default function App() {
         if (isSpeakingRef.current) return;
         setState('IDLE');
         setInterimTranscript('');
-
-        if (settings.continuousListening) {
-          silenceCountRef.current += 1;
-          if (silenceCountRef.current === 1) {
-            addLog('[ SILENCE DETECTED ]: TALA asking if guest needs anything else...', 'info');
-            speakText('Is that all I can help you with today?');
-          } else {
-            addLog('[ STANDBY ]: TALA on standby. Say or tap "Wake up TALA" to activate.', 'system');
-            silenceCountRef.current = 0;
-          }
-        }
       };
 
       recognition.onerror = (event: any) => {
