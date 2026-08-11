@@ -3,15 +3,29 @@
  */
 
 /**
+ * Strips model safety evaluation headers (e.g. "User Safety: safe", "Response Safety: safe")
+ * returned by certain open models before display or voice synthesis.
+ */
+export function stripSafetyMetadata(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/(?:User|Response|System)?\s*Safety\s*:\s*(?:safe|unsafe|pass|flagged|neutral|none|low|medium|high)/gi, '')
+    .replace(/Safety\s*Rating\s*:\s*[^\n]+/gi, '')
+    .trim();
+}
+
+/**
  * Clean system responses before passing to Speech Synthesis engine.
  * Automatically strips all markdown tags, brackets, code blocks, URLs,
- * system tags, and special symbols, and converts abbreviations/time/currency
+ * safety metadata, and special symbols, and converts abbreviations/time/currency
  * into phonetically human-friendly spoken forms.
  */
 export function cleanTextForSpeech(rawText: string): string {
   if (!rawText) return '';
 
-  return rawText
+  const sanitized = stripSafetyMetadata(rawText);
+
+  return sanitized
     // Remove markdown code blocks ```...```
     .replace(/```[\s\S]*?```/g, '. Code snippet omitted. ')
     // Remove inline code backticks `code` -> code

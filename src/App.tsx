@@ -37,7 +37,7 @@ import { AdminRequestsPage } from './pages/admin/AdminRequestsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
 import { soundEffects } from './utils/soundEffects';
-import { cleanTextForSpeech } from './utils/textUtils';
+import { cleanTextForSpeech, stripSafetyMetadata } from './utils/textUtils';
 
 const DEFAULT_SYSTEM_INSTRUCTION =
   "You are TALA, the warm, highly attentive, and agentic AI Concierge for BAIA Resort in San Vicente, Palawan. You speak in a natural, friendly, conversational tone like a warm resort manager on a live call. Speak concisely (1 to 3 sentences maximum) so your voice response is fast and fluid. Never output long lists, bullet points, or canned disclaimers. Always answer guest queries accurately using the BAIA knowledge base. When a guest asks for a resort service (such as extra towels, airport transfer, motorbike rental, breakfast, or housekeeping), confirm warmly and state that you have logged the request for the front desk team to take care of immediately.";
@@ -530,7 +530,8 @@ export default function App() {
           systemInstruction: groundedSystemInstruction
         });
 
-        const replyText = data.responseText || 'TALA received an empty response.';
+        const rawReply = data.responseText || 'TALA received an empty response.';
+        const replyText = stripSafetyMetadata(rawReply) || rawReply;
 
         const talaMsg: ChatMessage = {
           id: Math.random().toString(36).substring(2, 9),
@@ -592,6 +593,7 @@ export default function App() {
     }
 
     try {
+      let hasSubmitted = false;
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
       recognition.continuous = false;
@@ -630,6 +632,7 @@ export default function App() {
       };
 
       recognition.onresult = (event: any) => {
+        if (hasSubmitted) return;
         triggerBargeIn('transcript token');
 
         let currentInterim = '';
@@ -643,14 +646,15 @@ export default function App() {
           }
         }
 
-        if (currentInterim) {
+        if (currentInterim && !hasSubmitted) {
           setInterimTranscript(currentInterim);
 
-          // Fast silence-debounce auto-submit: If guest pauses for 400ms, auto-send prompt without waiting for browser isFinal
           if (speechDebounceTimerRef.current) clearTimeout(speechDebounceTimerRef.current);
           const currentText = currentInterim.trim();
           if (currentText.length > 2) {
             speechDebounceTimerRef.current = setTimeout(() => {
+              if (hasSubmitted) return;
+              hasSubmitted = true;
               addLog(`[ FAST VOICE SUBMIT ]: "${currentText}"`, 'success');
               setInterimTranscript('');
               try {
@@ -659,11 +663,12 @@ export default function App() {
               recognitionRef.current = null;
               const cleanPrompt = currentText.replace(/^(wake up tala|hey tala|tala)[,!\s]*/i, '');
               sendPromptToTala(cleanPrompt.trim() || currentText);
-            }, 400);
+            }, 550);
           }
         }
 
-        if (finalScript) {
+        if (finalScript && !hasSubmitted) {
+          hasSubmitted = true;
           if (speechDebounceTimerRef.current) {
             clearTimeout(speechDebounceTimerRef.current);
             speechDebounceTimerRef.current = null;
