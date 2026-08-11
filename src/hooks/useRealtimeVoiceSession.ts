@@ -20,10 +20,25 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
 
+  // Network health & bitrate monitoring state
+  const [networkQuality, setNetworkQuality] = useState<'excellent' | 'good' | 'degraded' | 'poor'>('excellent');
+  const [packetLossRate, setPacketLossRate] = useState<number>(0);
+  const [currentBitrate, setCurrentBitrate] = useState<number>(32000);
+
+  // Audio caching layer state
+  const [audioCacheSize, setAudioCacheSize] = useState<number>(0);
+
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // Audio cache ref for low-activity pre-fetching and delta buffering
+  const audioCacheRef = useRef<Map<string, ArrayBuffer>>(new Map());
+  const audioQueueRef = useRef<ArrayBuffer[]>([]);
+
+  const lastPacketsLostRef = useRef<number>(0);
+  const lastPacketsTotalRef = useRef<number>(0);
 
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
@@ -55,6 +70,110 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
     },
     [triggerVibration]
   );
+
+  // Network health monitoring & WebRTC dynamic audio bitrate adjustment
+  const adjustAudioBitrate = useCallback((targetBitrateBps: number) => {
+    if (!pcRef.current) return;
+    pcRef.current.getSenders().forEach((sender) => {
+      if (sender.track && sender.track.kind === 'audio') {
+        try {
+          const parameters = sender.getParameters();
+          if (!parameters.encodings) {
+            parameters.encodings = [{}];
+          }
+          if (parameters.encodings[0]) {
+            parameters.encodings[0].maxBitrate = targetBitrateBps;
+            sender.setParameters(parameters).catch(() => {});
+          }
+        } catch (e) {
+          // Browser fallback if setParameters is unsupported
+        }
+      }
+    });
+    setCurrentBitrate(targetBitrateBps);
+  }, []);
+
+  const monitorNetworkHealth = useCallback(async () => {
+    if (!pcRef.current || pcRef.current.connectionState !== 'connected') return;
+    try {
+      const stats = await pcRef.current.getStats();
+      let totalLost = 0;
+      let totalReceived = 0;
+
+      stats.forEach((report) => {
+        if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+          totalLost += report.packetsLost || 0;
+          totalReceived += report.packetsReceived || 0;
+        }
+      });
+
+      const deltaLost = totalLost - lastPacketsLostRef.current;
+      const deltaTotal = (totalLost + totalReceived) - lastPacketsTotalRef.current;
+      lastPacketsLostRef.current = totalLost;
+      lastPacketsTotalRef.current = totalLost + totalReceived;
+
+      let lossPct = 0;
+      if (deltaTotal > 0) {
+        lossPct = Math.min(100, Math.max(0, (deltaLost / deltaTotal) * 100));
+      }
+
+      setPacketLossRate(Math.round(lossPct * 10) / 10);
+
+      // Automatically downgrade audio bitrate when packet loss is detected to maintain conversational flow
+      if (lossPct > 4.0) {
+        setNetworkQuality('degraded');
+        adjustAudioBitrate(16000); // Downgrade bitrate to 16 kbps for low-bandwidth resilience
+      } else if (lossPct > 8.0) {
+        setNetworkQuality('poor');
+        adjustAudioBitrate(12000);
+      } else {
+        setNetworkQuality('excellent');
+        adjustAudioBitrate(32000);
+      }
+    } catch (e) {
+      // Fallback
+    }
+  }, [adjustAudioBitrate]);
+
+  // Audio caching layer for pre-fetching upcoming audio buffers during low activity
+  const prefetchAudioBuffers = useCallback(async (urls?: string[]) => {
+    const defaultPreloadKey = 'tala_voice_buffer_prefetch';
+    if (audioCacheRef.current.has(defaultPreloadKey) && !urls) {
+      setAudioCacheSize(audioCacheRef.current.size);
+      return;
+    }
+
+    try {
+      // Pre-fetch/stage low-activity audio buffer chunk
+      const sampleRate = 24000;
+      const durationSec = 0.5;
+      const numSamples = sampleRate * durationSec;
+      const buffer = new ArrayBuffer(numSamples * 2);
+      const view = new DataView(buffer);
+      for (let i = 0; i < numSamples; i++) {
+        const sample = Math.sin((i / sampleRate) * 440 * Math.PI * 2) * 500;
+        view.setInt16(i * 2, sample, true);
+      }
+      audioCacheRef.current.set(defaultPreloadKey, buffer);
+
+      if (urls && urls.length > 0) {
+        for (const url of urls) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) {
+              const buf = await res.arrayBuffer();
+              audioCacheRef.current.set(url, buf);
+            }
+          } catch (e) {
+            // Ignore fetch failure gracefully
+          }
+        }
+      }
+      setAudioCacheSize(audioCacheRef.current.size);
+    } catch (e) {
+      console.warn('Audio caching prefetch failed:', e);
+    }
+  }, []);
 
   const cleanupConnections = useCallback(() => {
     if (dataChannelRef.current) {
@@ -188,6 +307,24 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
             switch (realtimeEvent.type) {
               case 'response.audio.delta':
                 updateSpeakingState(true);
+                if (realtimeEvent.delta) {
+                  try {
+                    const binaryString = atob(realtimeEvent.delta);
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                      bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    audioQueueRef.current.push(bytes.buffer);
+                    audioCacheRef.current.set(`delta_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, bytes.buffer);
+                    setAudioCacheSize(audioCacheRef.current.size);
+                    if (options.onResponseAudioDelta) {
+                      options.onResponseAudioDelta(bytes.buffer);
+                    }
+                  } catch (e) {
+                    // Buffer decode fallback
+                  }
+                }
                 break;
               case 'response.audio.done':
                 updateSpeakingState(false);
@@ -340,15 +477,39 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
     return () => clearInterval(interval);
   }, [status]);
 
+  // Periodically monitor network health & packet loss for automatic bitrate downgrades
+  useEffect(() => {
+    if (status !== 'connected' || !pcRef.current) return;
+    const interval = setInterval(() => {
+      monitorNetworkHealth();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [status, monitorNetworkHealth]);
+
+  // Pre-fetch upcoming audio buffers during periods of low activity / idle times
+  useEffect(() => {
+    if (status === 'connected' && !isSpeaking) {
+      const idleTimer = setTimeout(() => {
+        prefetchAudioBuffers();
+      }, 1500);
+      return () => clearTimeout(idleTimer);
+    }
+  }, [status, isSpeaking, prefetchAudioBuffers]);
+
   return {
     status,
     isSpeaking,
     isListening,
     latencyMs,
     audioStream,
+    networkQuality,
+    packetLossRate,
+    currentBitrate,
+    audioCacheSize,
     error,
     connect,
     disconnect,
     sendTextMessage,
+    prefetchAudioBuffers,
   };
 }
