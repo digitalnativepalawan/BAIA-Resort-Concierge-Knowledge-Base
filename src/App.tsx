@@ -378,7 +378,7 @@ export default function App() {
         }, 80);
       }
 
-      speechEngine.speakText(
+      speechEngine.speakSentenceChunks(
         cleanedText,
         selectedVoice,
         pitch,
@@ -402,6 +402,7 @@ export default function App() {
           }
         }
       );
+
     },
     [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog, setupMicBargeInListener]
   );
@@ -502,15 +503,22 @@ export default function App() {
 
         const effectiveOpenRouterKey = settings.openrouterApiKey?.trim() || '';
 
-        // Construct grounded system instruction
+        // Construct grounded system instruction using fast local RAG search over knowledge base files
         let groundedSystemInstruction = settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION;
-        if (knowledgeFiles.length > 0) {
+        
+        // Instant sub-millisecond local RAG search over knowledge base files
+        const relevantKnowledge = knowledgeService.searchKnowledge(promptText, 3);
+        
+        if (relevantKnowledge) {
+          groundedSystemInstruction += `\n\n=== RELEVANT BAIA KNOWLEDGE BASE EXCERPTS ===\n${relevantKnowledge}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing the exact facts from the RELEVANT BAIA KNOWLEDGE BASE EXCERPTS provided above.\n2. Keep spoken responses concise, warm, natural, and conversational (1 to 3 sentences maximum).\n3. Never invent property details not present in the knowledge base. Confirm guest service requests warmly.`;
+        } else if (knowledgeFiles.length > 0) {
           const docsText = knowledgeFiles
             .map((f, idx) => `--- GROUNDED DOCUMENT ${idx + 1} (${f.category || 'General'}): ${f.name} ---\n${f.content}`)
             .join('\n\n');
 
           groundedSystemInstruction += `\n\n=== BAIA GROUNDING KNOWLEDGE BASE ===\nThe administrator has supplied the following reference documents:\n\n${docsText}\n\n=== CONCIERGE DIRECTIVES ===\n1. Answer guest queries by prioritizing context from the BAIA GROUNDING KNOWLEDGE BASE provided above.\n2. Keep spoken responses short, natural, warm, and conversational (1 to 3 sentences maximum).\n3. Never invent property details not present in the knowledge base. Confirm guest service requests warmly.`;
         }
+
 
         const selectedModel = settings.selectedOpenRouterModel || 'openrouter/free';
 

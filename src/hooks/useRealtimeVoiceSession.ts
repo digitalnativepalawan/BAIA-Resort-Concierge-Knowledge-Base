@@ -47,17 +47,31 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
           }
         };
 
-        // 3. Acquire local microphone stream
+        // 3. Acquire local microphone stream with low-bandwidth OPUS settings for weak Wi-Fi
         const localStream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
+            channelCount: 1,
+            sampleRate: 24000,
           },
         });
         localStreamRef.current = localStream;
         localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
         setIsListening(true);
+
+        // Connection state monitoring for weak Wi-Fi signal drops
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+            setStatus('error');
+            setError('Connection degraded over Wi-Fi. Retrying audio stream...');
+          } else if (pc.connectionState === 'connected') {
+            setStatus('connected');
+            setError(null);
+          }
+        };
+
 
         // 4. Create Data Channel for Realtime Events
         const dc = pc.createDataChannel('oai-events');

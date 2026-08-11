@@ -107,6 +107,25 @@ export function getBestFemaleVoice(voices: SpeechSynthesisVoice[]): SpeechSynthe
 
 let currentAudio: HTMLAudioElement | null = null;
 
+export function getNetworkQuality(): 'strong' | 'weak' | 'offline' {
+  if (typeof navigator === 'undefined') return 'strong';
+  if (!navigator.onLine) return 'offline';
+
+  const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+  if (connection) {
+    if (connection.saveData || connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g') {
+      return 'weak';
+    }
+    if (connection.rtt && connection.rtt > 350) {
+      return 'weak';
+    }
+    if (connection.downlink && connection.downlink < 1.0) {
+      return 'weak';
+    }
+  }
+  return 'strong';
+}
+
 function speakWebSpeech(
   cleanedText: string,
   voiceName?: string,
@@ -139,13 +158,28 @@ function speakWebSpeech(
   }
 
   const utterance = new SpeechSynthesisUtterance(sanitisedText);
-  utterance.pitch = pitch;
-  utterance.rate = rate;
+
+  // Humanlike voice prosody: Add subtle, natural inflection modulation
+  // Questions get slightly higher pitch; warm resort greeting tone gets natural cadence
+  let adjustedPitch = pitch;
+  let adjustedRate = rate;
+  if (sanitisedText.endsWith('?')) {
+    adjustedPitch = Math.min(1.15, pitch * 1.06);
+  } else if (sanitisedText.endsWith('!')) {
+    adjustedRate = Math.min(1.1, rate * 1.04);
+  }
+
+  utterance.pitch = adjustedPitch;
+  utterance.rate = adjustedRate;
 
   const voices = window.speechSynthesis.getVoices();
   let selected: SpeechSynthesisVoice | undefined;
 
-  if (voiceName) {
+  // On low signal Wi-Fi / weak connection, prioritize local browser female voices for zero network latency
+  const netQuality = getNetworkQuality();
+  if (netQuality === 'weak' || netQuality === 'offline') {
+    selected = getBestFemaleVoice(voices) || voices[0];
+  } else if (voiceName) {
     selected = voices.find((v) => v.name === voiceName || v.voiceURI === voiceName);
   }
 
@@ -182,6 +216,7 @@ function speakWebSpeech(
   // Immediate execution call
   window.speechSynthesis.speak(utterance);
 }
+
 
 export interface VoiceTestResult {
   testId: string;
@@ -511,6 +546,7 @@ export function logAndValidateVoiceSelection(
 }
 
 export const speechEngine = {
+  getNetworkQuality,
   logAndValidateVoiceSelection,
   getDiagnosticLogs: (): VoiceSelectionDiagnostic[] => [...diagnosticLogs],
   getActiveVoiceProfile,
@@ -564,6 +600,47 @@ export const speechEngine = {
     });
   },
 
+  /**
+   * Speak response in fast incremental sentence chunks to minimize latency on slow/low-signal Wi-Fi.
+   */
+  speakSentenceChunks: async (
+    text: string,
+    voiceName?: string,
+    pitch = 1.0,
+    rate = 1.0,
+    onEnd?: () => void
+  ): Promise<void> => {
+    const cleaned = cleanTextForSpeech(text);
+    if (!cleaned) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    // Split into sentences using punctuation boundaries
+    const sentences = cleaned
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (sentences.length <= 1) {
+      return speechEngine.speakText(cleaned, voiceName, pitch, rate, onEnd);
+    }
+
+    for (let i = 0; i < sentences.length; i++) {
+      const isLast = i === sentences.length - 1;
+      await new Promise<void>((res) => {
+        speakWebSpeech(
+          sentences[i],
+          voiceName,
+          pitch,
+          rate,
+          isLast ? onEnd : undefined,
+          res
+        );
+      });
+    }
+  },
+
   stopSpeech: (): void => {
     if (typeof window !== 'undefined') {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
@@ -574,5 +651,6 @@ export const speechEngine = {
     }
   },
 };
+
 
 

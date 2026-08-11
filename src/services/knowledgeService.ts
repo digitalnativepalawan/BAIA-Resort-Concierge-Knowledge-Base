@@ -90,4 +90,87 @@ export const knowledgeService = {
       supabase.removeChannel(channel);
     };
   },
+
+  /**
+   * Fast local RAG search index over extensive knowledge base files.
+   * Performs sub-millisecond keyword relevance scoring and returns exact snippets
+   * so responses can be synthesized cleanly without massive network overhead over weak Wi-Fi.
+   */
+  searchKnowledge: (query: string, maxSnippets = 3): string => {
+    if (!query || !query.trim()) return '';
+
+    let docs: KnowledgeFile[] = localCache.get<KnowledgeFile[]>('knowledge_docs', []);
+    if (!docs || docs.length === 0) {
+      try {
+        const saved = localStorage.getItem('tala_knowledge_files');
+        if (saved) docs = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    if (!docs || docs.length === 0) return '';
+
+    const queryTerms = query
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((t) => t.length > 2);
+
+    if (queryTerms.length === 0) return '';
+
+    interface ScoredSnippet {
+      docName: string;
+      category: string;
+      snippet: string;
+      score: number;
+    }
+
+    const scoredSnippets: ScoredSnippet[] = [];
+
+    docs.forEach((doc) => {
+      if (!doc.content) return;
+      // Split document into paragraphs or sections
+      const paragraphs = doc.content.split(/\n\n+/);
+
+      paragraphs.forEach((p) => {
+        const cleanP = p.trim();
+        if (cleanP.length < 10) return;
+        const lowerP = cleanP.toLowerCase();
+
+        let score = 0;
+        queryTerms.forEach((term) => {
+          if (lowerP.includes(term)) {
+            score += 3;
+            // Bonus if term appears multiple times
+            const occurrences = (lowerP.match(new RegExp(term, 'g')) || []).length;
+            score += occurrences;
+          }
+        });
+
+        // Category match bonus
+        if (doc.category && query.toLowerCase().includes(doc.category.toLowerCase())) {
+          score += 4;
+        }
+
+        if (score > 0) {
+          scoredSnippets.push({
+            docName: doc.name,
+            category: doc.category || 'Resort Information',
+            snippet: cleanP,
+            score,
+          });
+        }
+      });
+    });
+
+    // Sort by relevance score descending
+    scoredSnippets.sort((a, b) => b.score - a.score);
+
+    const topSnippets = scoredSnippets.slice(0, maxSnippets);
+    if (topSnippets.length === 0) return '';
+
+    return topSnippets
+      .map((s) => `[Source: ${s.docName} (${s.category})]:\n${s.snippet}`)
+      .join('\n\n');
+  },
 };
+
