@@ -128,3 +128,36 @@ CREATE POLICY "Authenticated update settings"
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON public.messages(created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_guest_requests_created_at ON public.guest_requests(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_knowledge_created_at ON public.knowledge_documents(created_at DESC);
+
+-- =======================================================
+-- VECTOR SIMILARITY SEARCH RPC FUNCTION
+-- =======================================================
+CREATE OR REPLACE FUNCTION match_knowledge_documents (
+  query_embedding VECTOR(1536),
+  match_threshold FLOAT DEFAULT 0.2,
+  match_count INT DEFAULT 5
+)
+RETURNS TABLE (
+  id UUID,
+  title VARCHAR(255),
+  category VARCHAR(100),
+  content TEXT,
+  similarity FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    kd.id,
+    kd.title,
+    kd.category,
+    kd.content,
+    (1 - (kd.embedding <=> query_embedding))::FLOAT AS similarity
+  FROM public.knowledge_documents kd
+  WHERE 1 - (kd.embedding <=> query_embedding) > match_threshold
+  ORDER BY kd.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+

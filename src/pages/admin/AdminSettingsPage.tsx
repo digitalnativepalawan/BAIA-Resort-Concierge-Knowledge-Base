@@ -283,10 +283,28 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           )}
         </div>
 
+        {/* Ollama Local Host Configuration */}
+        <div className="bg-[#070e20] p-4 rounded-xl border border-[#00f0ff]/15 space-y-3">
+          <label className="block text-xs font-medium text-gray-300 flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-[#00f0ff]" />
+            <span>Ollama Local Machine Server URL (Optional)</span>
+          </label>
+          <input
+            type="text"
+            value={settings.ollamaHost || 'http://localhost:11434'}
+            onChange={(e) => onUpdateSettings({ ollamaHost: e.target.value.trim() })}
+            placeholder="http://localhost:11434"
+            className="w-full bg-[#0a1228] border border-[#00f0ff]/20 focus:border-[#00f0ff]/50 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-gray-500 focus:outline-none transition-colors font-mono"
+          />
+          <p className="text-[11px] text-gray-400 font-mono">
+            When an Ollama model is selected below (e.g. Ollama Llama 3.2), queries route directly to your local machine.
+          </p>
+        </div>
+
         {/* Live Model Catalog Selector */}
         <div className="space-y-2">
           <label className="block text-xs font-medium text-[#00f0ff] tracking-wide">
-            Select Active OpenRouter Model
+            Select Active OpenRouter (Free/Paid) or Ollama Local Model
           </label>
           <OpenRouterModelSelector
             selectedModelId={settings.selectedOpenRouterModel || 'openrouter/free'}

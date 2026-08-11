@@ -52,6 +52,7 @@ export interface TalaSettings {
   openrouterApiKey: string;
   selectedOpenRouterModel: string;
   customApiKey?: string; // Backwards compatibility alias
+  ollamaHost?: string; // Local machine Ollama endpoint (default http://localhost:11434)
   systemInstruction: string;
   autoSpeak: boolean;
   soundEnabled: boolean;

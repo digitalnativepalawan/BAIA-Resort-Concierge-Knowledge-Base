@@ -8,42 +8,49 @@ const corsHeaders = {
 const DEFAULT_MODELS = [
   {
     id: 'openrouter/free',
-    name: 'Free Models Router',
+    name: 'Free Models Router (OpenRouter)',
     description: 'Auto-selects the best available free model on OpenRouter',
     context_length: 128000,
     pricing: { prompt: '0', completion: '0' }
   },
   {
-    id: 'google/gemini-2.5-flash:free',
-    name: 'Google Gemini 2.5 Flash (Free)',
-    description: 'Fast, highly accurate multimodal AI model',
-    context_length: 1000000,
+    id: 'ollama/llama3.2',
+    name: 'Ollama Local: Llama 3.2 (http://localhost:11434)',
+    description: 'Runs locally on your machine via Ollama local server',
+    context_length: 128000,
+    pricing: { prompt: '0', completion: '0' }
+  },
+  {
+    id: 'ollama/mistral',
+    name: 'Ollama Local: Mistral (http://localhost:11434)',
+    description: 'Runs locally on your machine via Ollama local server',
+    context_length: 32768,
     pricing: { prompt: '0', completion: '0' }
   },
   {
     id: 'meta-llama/llama-3.3-70b-instruct:free',
-    name: 'Meta Llama 3.3 70B (Free)',
+    name: 'Meta Llama 3.3 70B (Free OpenRouter)',
     description: 'High intelligence open weights model',
     context_length: 131072,
     pricing: { prompt: '0', completion: '0' }
   },
   {
     id: 'deepseek/deepseek-r1:free',
-    name: 'DeepSeek R1 (Free)',
+    name: 'DeepSeek R1 (Free OpenRouter)',
     description: 'Advanced reasoning model with step-by-step logic',
     context_length: 16384,
     pricing: { prompt: '0', completion: '0' }
   },
   {
     id: 'nvidia/nemotron-nano-12b-v2-vl:free',
-    name: 'NVIDIA Nemotron Nano 12B (Free)',
+    name: 'NVIDIA Nemotron Nano 12B (Free OpenRouter)',
     description: 'NVIDIA optimized lightweight vision-language model',
     context_length: 128000,
     pricing: { prompt: '0', completion: '0' }
   },
   {
     id: 'qwen/qwen-2.5-72b-instruct:free',
-    name: 'Qwen 2.5 72B Instruct (Free)',
+    name: 'Qwen 2.5 72B Instruct (Free OpenRouter)',
     description: 'Strong multilingual knowledge model',
     context_length: 32768,
     pricing: { prompt: '0', completion: '0' }

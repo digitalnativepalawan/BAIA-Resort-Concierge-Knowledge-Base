@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChatMessage, ConversationSession } from '../../types';
+import { conversationService } from '../../services/conversationService';
 import {
   MessageSquare,
   User as UserIcon,
@@ -9,21 +10,53 @@ import {
   CheckCircle,
   Clock,
   Search,
-  Filter
+  Filter,
+  Trash2,
+  Pin,
+  PinOff
 } from 'lucide-react';
 
 interface AdminConversationsPageProps {
   messages: ChatMessage[];
   onSendMessage: (text: string) => void;
+  onClearConversation?: () => void;
 }
 
 export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
   messages,
-  onSendMessage
+  onSendMessage,
+  onClearConversation
 }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'needs_staff' | 'closed'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [replyText, setReplyText] = useState<string>('');
+  const [showClearModal, setShowClearModal] = useState<boolean>(false);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
+  const [pinnedMessageIds, setPinnedMessageIds] = useState<string[]>([]);
+
+  const togglePinMessage = (msgId: string) => {
+    setPinnedMessageIds((prev) =>
+      prev.includes(msgId) ? prev.filter((id) => id !== msgId) : [...prev, msgId]
+    );
+  };
+
+  const pinnedMessages = messages.filter((m) => pinnedMessageIds.includes(m.id));
+
+  const handleConfirmClear = async () => {
+    setIsClearing(true);
+    try {
+      if (onClearConversation) {
+        await onClearConversation();
+      } else {
+        await conversationService.clearAllMessages();
+      }
+    } catch (err) {
+      console.error('Error clearing conversation messages:', err);
+    } finally {
+      setIsClearing(false);
+      setShowClearModal(false);
+    }
+  };
 
   // Format active guest session
   const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
@@ -178,13 +211,63 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
                   <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider">
                     ● Active Thread
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowClearModal(true)}
+                    className="px-3 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/40 font-semibold text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+                    title="Clear all messages in current session"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Clear Conversation</span>
+                  </button>
                 </div>
               </div>
 
               {/* Message Transcript Area */}
               <div className="flex-1 overflow-y-auto py-4 space-y-3 pr-2 my-2 scrollbar-thin scrollbar-thumb-[#00f0ff]/20">
+                {/* Pinned Snippets & Critical Guest Requests Top Feed */}
+                {pinnedMessages.length > 0 && (
+                  <div className="mb-4 p-3 rounded-2xl bg-[#0a1228] border-2 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)] space-y-2">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-amber-500/20 text-xs font-mono font-bold text-amber-400">
+                      <div className="flex items-center gap-1.5">
+                        <Pin className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        <span>Pinned Critical Requests & Snippets ({pinnedMessages.length})</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-normal">Kept at top of feed</span>
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {pinnedMessages.map((pMsg) => (
+                        <div
+                          key={`pinned-${pMsg.id}`}
+                          className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs flex items-start justify-between gap-2"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 text-[10px] font-mono mb-1">
+                              <span className="font-bold text-amber-300">
+                                {pMsg.role === 'user' ? 'Guest Request' : 'TALA Snippet'}
+                              </span>
+                              <span className="text-gray-400">• {pMsg.timestamp}</span>
+                            </div>
+                            <p className="text-gray-200 line-clamp-2 leading-relaxed font-sans">{pMsg.text}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => togglePinMessage(pMsg.id)}
+                            className="p-1 rounded-lg hover:bg-amber-500/20 text-amber-400 transition-colors shrink-0"
+                            title="Unpin snippet from top"
+                          >
+                            <PinOff className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {messages.map((msg) => {
                   const isUser = msg.role === 'user';
+                  const isPinned = pinnedMessageIds.includes(msg.id);
                   return (
                     <div
                       key={msg.id}
@@ -197,17 +280,42 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
                       )}
 
                       <div
-                        className={`max-w-[80%] rounded-2xl p-3.5 text-xs font-sans leading-relaxed shadow-lg ${
-                          isUser
+                        className={`group relative max-w-[80%] rounded-2xl p-3.5 text-xs font-sans leading-relaxed shadow-lg transition-all ${
+                          isPinned
+                            ? 'bg-[#0f1d3a] text-white border-2 border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                            : isUser
                             ? 'bg-[#00f0ff]/15 text-white border border-[#00f0ff]/30 rounded-tr-none'
                             : 'bg-[#070e20] text-gray-200 border border-[#00f0ff]/20 rounded-tl-none'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-3 text-[10px] font-mono text-gray-400 mb-1">
-                          <span className="font-bold text-[#00f0ff]">
-                            {isUser ? 'Guest' : 'TALA Concierge'}
-                          </span>
-                          <span>{msg.timestamp}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-[#00f0ff]">
+                              {isUser ? 'Guest' : 'TALA Concierge'}
+                            </span>
+                            {isPinned && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-[9px] flex items-center gap-0.5">
+                                <Pin className="w-2.5 h-2.5 fill-amber-300" />
+                                Pinned
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span>{msg.timestamp}</span>
+                            <button
+                              type="button"
+                              onClick={() => togglePinMessage(msg.id)}
+                              className={`p-1 rounded transition-opacity ${
+                                isPinned
+                                  ? 'opacity-100 text-amber-400 hover:text-amber-300'
+                                  : 'opacity-40 group-hover:opacity-100 text-gray-400 hover:text-[#00f0ff]'
+                              }`}
+                              title={isPinned ? 'Unpin snippet' : 'Pin snippet to top of feed'}
+                            >
+                              <Pin className={`w-3 h-3 ${isPinned ? 'fill-amber-400' : ''}`} />
+                            </button>
+                          </div>
                         </div>
                         <p className="whitespace-pre-wrap">{msg.text}</p>
                       </div>
@@ -246,6 +354,53 @@ export const AdminConversationsPage: React.FC<AdminConversationsPageProps> = ({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0a1228] border border-red-500/40 rounded-2xl p-6 max-w-md w-full shadow-[0_0_30px_rgba(239,68,68,0.2)] space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Clear Conversation</h3>
+                <p className="text-xs text-gray-400">Permanent Database Deletion</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Are you sure you want to delete all chat messages for this current session? This will execute a Supabase delete query to permanently remove all transcripts from the database.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                disabled={isClearing}
+                className="px-4 py-2 rounded-xl bg-[#070e20] text-gray-300 hover:text-white border border-[#00f0ff]/20 text-xs font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClear}
+                disabled={isClearing}
+                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.4)] disabled:opacity-50"
+              >
+                {isClearing ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear All Messages</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

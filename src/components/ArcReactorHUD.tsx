@@ -1,20 +1,24 @@
 import React, { useEffect, useRef } from 'react';
 import { TalaState } from '../types';
+import { Mic, MicOff } from 'lucide-react';
 
 interface ArcReactorHUDProps {
   state: TalaState;
   onCoreClick: () => void;
   speechVolume?: number; // 0.0 to 1.0 speech audio volume simulation or actual boundary level
   interimTranscript?: string;
+  isMicActive?: boolean;
 }
 
 export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
   state,
   onCoreClick,
   speechVolume = 0.5,
-  interimTranscript = ''
+  interimTranscript = '',
+  isMicActive
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const micOn = isMicActive ?? (state === 'LISTENING' || state === 'SPEAKING' || state === 'PROCESSING');
 
   // Canvas particle dynamics
   useEffect(() => {
@@ -107,6 +111,61 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
         ctx.restore();
       });
 
+      // Draw real-time audio visualization waveform data synchronized with speechVolume
+      const time = Date.now();
+      const effVolume = state === 'SPEAKING' ? Math.max(0.25, speechVolume) : state === 'LISTENING' ? Math.max(0.35, speechVolume * 1.5) : 0.15;
+
+      // 1. Radial Audio Spectrum Frequency Bars
+      const numBars = 64;
+      const baseRadius = 80;
+      ctx.save();
+      for (let i = 0; i < numBars; i++) {
+        const barAngle = (i / numBars) * Math.PI * 2 + globalRotation * 0.5;
+        const freqNoise = Math.sin(i * 0.5 + time * 0.006) * Math.cos(i * 0.3 - time * 0.004);
+        const barLength = (10 + Math.abs(freqNoise) * 22) * effVolume * (state === 'ERROR' ? 0.3 : 1);
+
+        const innerX = centerX + Math.cos(barAngle) * baseRadius;
+        const innerY = centerY + Math.sin(barAngle) * baseRadius;
+        const outerX = centerX + Math.cos(barAngle) * (baseRadius + barLength);
+        const outerY = centerY + Math.sin(barAngle) * (baseRadius + barLength);
+
+        ctx.beginPath();
+        ctx.moveTo(innerX, innerY);
+        ctx.lineTo(outerX, outerY);
+        ctx.strokeStyle = i % 2 === 0 ? '#00f0ff' : '#ff007f';
+        ctx.lineWidth = 1.8;
+        ctx.globalAlpha = Math.min(1, 0.4 + effVolume * 0.8);
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = i % 2 === 0 ? '#00f0ff' : '#ff007f';
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 2. Closed Oscilloscope Radial Audio Waveform Loop
+      ctx.save();
+      ctx.beginPath();
+      const waveSegments = 120;
+      for (let i = 0; i <= waveSegments; i++) {
+        const theta = (i / waveSegments) * Math.PI * 2;
+        const waveAmp = (Math.sin(theta * 7 + time * 0.008) * 12 + Math.cos(theta * 13 - time * 0.01) * 8) * effVolume;
+        const r = baseRadius + 18 + waveAmp;
+        const wx = centerX + Math.cos(theta - globalRotation) * r;
+        const wy = centerY + Math.sin(theta - globalRotation) * r;
+
+        if (i === 0) {
+          ctx.moveTo(wx, wy);
+        } else {
+          ctx.lineTo(wx, wy);
+        }
+      }
+      ctx.closePath();
+      ctx.strokeStyle = state === 'SPEAKING' ? '#00f0ff' : state === 'LISTENING' ? '#ff007f' : 'rgba(0, 240, 255, 0.4)';
+      ctx.lineWidth = 2 + effVolume * 2.5;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = state === 'SPEAKING' ? '#00f0ff' : '#ff007f';
+      ctx.stroke();
+      ctx.restore();
+
       // Draw faint energy connector arcs when processing or listening
       if (state === 'PROCESSING' || state === 'LISTENING' || state === 'SPEAKING') {
         ctx.save();
@@ -194,6 +253,28 @@ export const ArcReactorHUD: React.FC<ArcReactorHUDProps> = ({
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full max-w-md my-4 select-none">
+      {/* Visual 'Mic Active' LED Indicator Badge */}
+      <div
+        className={`absolute -top-3 right-2 sm:top-1 sm:right-4 z-30 px-3 py-1 rounded-full border backdrop-blur-md flex items-center gap-1.5 transition-all duration-300 shadow-md ${
+          micOn
+            ? 'bg-[#0f1d3a]/95 border-emerald-400/60 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.35)]'
+            : 'bg-[#0f1d3a]/80 border-gray-700/50 text-gray-400'
+        }`}
+        title={micOn ? 'Microphone Active: WebRTC voice stream is active' : 'Microphone Standby: WebRTC voice stream is inactive'}
+      >
+        <span
+          className={`w-2 h-2 rounded-full transition-all ${
+            micOn
+              ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]'
+              : 'bg-gray-600'
+          }`}
+        />
+        {micOn ? <Mic className="w-3.5 h-3.5 text-emerald-400 animate-pulse" /> : <MicOff className="w-3.5 h-3.5 text-gray-500" />}
+        <span className="text-[10px] font-mono font-bold tracking-wider uppercase">
+          {micOn ? 'Mic Active' : 'Mic Off'}
+        </span>
+      </div>
+
       {/* Container aspect wrapper */}
       <div className="relative w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 flex items-center justify-center">
         

@@ -101,6 +101,7 @@ export default function App() {
       openrouterApiKey: openrouterKey,
       selectedOpenRouterModel: selectedOpenRouterModel,
       customApiKey: openrouterKey,
+      ollamaHost: 'http://localhost:11434',
       systemInstruction: DEFAULT_SYSTEM_INSTRUCTION,
       autoSpeak: true,
       soundEnabled: true,
@@ -526,6 +527,7 @@ export default function App() {
         const data = await openrouter.sendChatPrompt({
           openrouterApiKey: effectiveOpenRouterKey || undefined,
           model: selectedModel,
+          ollamaHost: settings.ollamaHost,
           prompt: promptText,
           history: historyForApi,
           systemInstruction: groundedSystemInstruction
@@ -808,6 +810,12 @@ export default function App() {
     addLog(`Deleted request ${id}`, 'info');
   }, [addLog]);
 
+  const handleClearMessages = useCallback(async () => {
+    setMessages([]);
+    await conversationService.clearAllMessages();
+    addLog('Cleared all session conversation messages from Supabase.', 'info');
+  }, [addLog]);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -868,6 +876,7 @@ export default function App() {
               <AdminConversationsPage
                 messages={messages}
                 onSendMessage={sendPromptToTala}
+                onClearConversation={handleClearMessages}
               />
             }
           />

@@ -230,11 +230,30 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               )}
             </div>
 
-            {/* 2. LIVE OPENROUTER MODEL SELECTOR */}
+            {/* 2. OPENROUTER & OLLAMA MODEL SELECTOR */}
+            <div className="p-4 rounded-xl bg-[#050811] border border-[#00f0ff]/30 space-y-3">
+              <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
+                <Cpu className="w-4 h-4 text-[#00f0ff]" />
+                <span>Ollama Local Server Endpoint (Optional)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={settings.ollamaHost || 'http://localhost:11434'}
+                  onChange={(e) => onUpdateSettings({ ollamaHost: e.target.value.trim() })}
+                  placeholder="http://localhost:11434"
+                  className="flex-1 px-3 py-2 bg-[#080d1a] border border-[#00f0ff]/30 focus:border-[#00f0ff] rounded-lg text-xs font-mono text-white placeholder-gray-600 focus:outline-none"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 font-mono">
+                Select an Ollama model below (e.g. Ollama Llama 3.2 or Mistral) to route calls locally.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <label className="text-xs font-mono font-bold text-[#00f0ff] flex items-center gap-1.5 uppercase">
                 <Cpu className="w-4 h-4 text-[#00f0ff]" />
-                <span>OpenRouter Model Catalog</span>
+                <span>Model Catalog (OpenRouter Free/Paid & Ollama Local)</span>
               </label>
 
               <OpenRouterModelSelector

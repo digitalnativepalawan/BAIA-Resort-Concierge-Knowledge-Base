@@ -86,6 +86,17 @@ export const conversationService = {
     };
   },
 
+  clearAllMessages: async (): Promise<void> => {
+    localCache.set('messages', []);
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from(MESSAGES_TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (err) {
+        console.warn('Supabase delete messages error:', err);
+      }
+    }
+  },
+
   formatMessagesToSessions: (messages: ChatMessage[], guestLabel = 'Guest (Main Villa)'): ConversationSession[] => {
     if (!messages || messages.length === 0) return [];
 
