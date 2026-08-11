@@ -31,6 +31,7 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   // Audio cache ref for low-activity pre-fetching and delta buffering
@@ -176,6 +177,12 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
   }, []);
 
   const cleanupConnections = useCallback(() => {
+    if (audioCtxRef.current) {
+      try {
+        audioCtxRef.current.close();
+      } catch (e) {}
+      audioCtxRef.current = null;
+    }
     if (dataChannelRef.current) {
       dataChannelRef.current.close();
       dataChannelRef.current = null;
@@ -217,9 +224,9 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
           }
         };
 
-        // 3. Acquire local microphone stream with low-bandwidth OPUS settings for weak Wi-Fi
+        // 3. Acquire local microphone stream with noise suppression pipeline & low-bandwidth OPUS settings
         if (!localStreamRef.current) {
-          const localStream = await navigator.mediaDevices.getUserMedia({
+          const rawStream = await navigator.mediaDevices.getUserMedia({
             audio: {
               echoCancellation: true,
               noiseSuppression: true,
@@ -228,8 +235,50 @@ export function useRealtimeVoiceSession(options: RealtimeSessionOptions = {}) {
               sampleRate: 24000,
             },
           });
-          localStreamRef.current = localStream;
-          setAudioStream((prev) => prev || localStream);
+
+          // Noise suppression filter pipeline to prevent ambient resort sounds from triggering VAD
+          try {
+            const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioCtxClass) {
+              const audioCtx = new AudioCtxClass({ sampleRate: 24000 });
+              audioCtxRef.current = audioCtx;
+              const source = audioCtx.createMediaStreamSource(rawStream);
+
+              // 1. High-pass filter: removes low-frequency ambient resort rumble (wind, waves, AC rumble < 85Hz)
+              const highpassFilter = audioCtx.createBiquadFilter();
+              highpassFilter.type = 'highpass';
+              highpassFilter.frequency.setValueAtTime(85, audioCtx.currentTime);
+
+              // 2. Notch filter: removes electrical/HVAC hum (60Hz / 50Hz harmonics)
+              const notchFilter = audioCtx.createBiquadFilter();
+              notchFilter.type = 'notch';
+              notchFilter.frequency.setValueAtTime(60, audioCtx.currentTime);
+              notchFilter.Q.setValueAtTime(10, audioCtx.currentTime);
+
+              // 3. Dynamics Compressor: dampens sudden ambient acoustic spikes to keep VAD stable
+              const compressor = audioCtx.createDynamicsCompressor();
+              compressor.threshold.setValueAtTime(-50, audioCtx.currentTime);
+              compressor.knee.setValueAtTime(40, audioCtx.currentTime);
+              compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+              compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+              compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+              const destination = audioCtx.createMediaStreamDestination();
+              source.connect(highpassFilter);
+              highpassFilter.connect(notchFilter);
+              notchFilter.connect(compressor);
+              compressor.connect(destination);
+
+              localStreamRef.current = destination.stream;
+            } else {
+              localStreamRef.current = rawStream;
+            }
+          } catch (e) {
+            // Fallback to raw stream if WebAudio filtering is restricted
+            localStreamRef.current = rawStream;
+          }
+
+          setAudioStream((prev) => prev || localStreamRef.current);
         }
 
         localStreamRef.current.getTracks().forEach((track) => {
