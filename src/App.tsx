@@ -375,7 +375,7 @@ export default function App() {
           if (startListeningRef.current && isSpeakingRef.current) {
             startListeningRef.current(true);
           }
-        }, 200);
+        }, 80);
       }
 
       speechEngine.speakText(
@@ -392,13 +392,13 @@ export default function App() {
           setState('IDLE');
           setSpeechVolume(0.2);
 
-          // Resume hands-free voice loop if enabled
+          // Resume hands-free voice loop immediately if enabled for rapid back-and-forth
           if (settings.continuousListening) {
             setTimeout(() => {
               if (startListeningRef.current && !isSpeakingRef.current) {
                 startListeningRef.current();
               }
-            }, 600);
+            }, 100);
           }
         }
       );
@@ -638,7 +638,7 @@ export default function App() {
         if (currentInterim) {
           setInterimTranscript(currentInterim);
 
-          // Fast silence-debounce auto-submit: If guest pauses for 650ms, auto-send prompt without waiting for browser isFinal
+          // Fast silence-debounce auto-submit: If guest pauses for 400ms, auto-send prompt without waiting for browser isFinal
           if (speechDebounceTimerRef.current) clearTimeout(speechDebounceTimerRef.current);
           const currentText = currentInterim.trim();
           if (currentText.length > 2) {
@@ -651,7 +651,7 @@ export default function App() {
               recognitionRef.current = null;
               const cleanPrompt = currentText.replace(/^(wake up tala|hey tala|tala)[,!\s]*/i, '');
               sendPromptToTala(cleanPrompt.trim() || currentText);
-            }, 650);
+            }, 400);
           }
         }
 
