@@ -38,6 +38,7 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 
 import { soundEffects } from './utils/soundEffects';
 import { cleanTextForSpeech, stripSafetyMetadata } from './utils/textUtils';
+import { useRealtimeVoiceSession } from './hooks/useRealtimeVoiceSession';
 
 const DEFAULT_SYSTEM_INSTRUCTION =
   "You are TALA, the warm, highly attentive, and agentic AI Concierge for BAIA Resort in San Vicente, Palawan. You speak in a natural, friendly, conversational tone like a warm resort manager on a live call. Speak concisely (1 to 3 sentences maximum) so your voice response is fast and fluid. Never output long lists, bullet points, or canned disclaimers. Always answer guest queries accurately using the BAIA knowledge base. When a guest asks for a resort service (such as extra towels, airport transfer, motorbike rental, breakfast, or housekeeping), confirm warmly and state that you have logged the request for the front desk team to take care of immediately.";
@@ -570,6 +571,28 @@ export default function App() {
     },
     [messages, settings, addLog, speakText, stopSpeech, knowledgeFiles, currentUser]
   );
+
+  // Realtime Full-Duplex Humanlike Voice Session Engine
+  const realtimeVoiceSession = useRealtimeVoiceSession({
+    apiKey: settings.openrouterApiKey,
+    instructions: DEFAULT_SYSTEM_INSTRUCTION,
+    voice: 'coral',
+    onTranscript: useCallback(
+      (transcript: string, isFinal: boolean) => {
+        if (isFinal && transcript) {
+          addLog(`[ REALTIME VOICE TRANSCRIPT ]: "${transcript}"`, 'success');
+          sendPromptToTala(transcript);
+        }
+      },
+      [addLog, sendPromptToTala]
+    ),
+    onError: useCallback(
+      (err: Error) => {
+        addLog(`[ REALTIME VOICE SESSION NOTICE ]: ${err.message}`, 'system');
+      },
+      [addLog]
+    ),
+  });
 
   // Web Speech Recognition
   const startListening = useCallback((isBargeInMode = false) => {
