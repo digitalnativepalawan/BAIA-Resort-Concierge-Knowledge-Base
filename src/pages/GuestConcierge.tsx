@@ -139,6 +139,23 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Persistent Network Signal Indicator */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0a1228]/80 border border-[#00f0ff]/20 text-[11px] font-mono text-cyan-200"
+            title={`Network Latency: ${liveLatency}ms • TALA Voice Connection`}
+          >
+            <Wifi
+              className={`w-3.5 h-3.5 ${
+                liveLatency < 100
+                  ? 'text-emerald-400'
+                  : liveLatency < 250
+                  ? 'text-amber-400'
+                  : 'text-red-400'
+              }`}
+            />
+            <span className="hidden xs:inline font-semibold">{liveLatency}ms</span>
+          </div>
+
           {/* Sound FX Toggle */}
           <button
             onClick={onToggleSound}
