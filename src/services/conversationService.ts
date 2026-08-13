@@ -28,9 +28,7 @@ export const conversationService = {
   listenChatMessages: (callback: (messages: ChatMessage[]) => void) => {
     // Deliver local cached messages immediately
     const cached = localCache.get<ChatMessage[]>('messages', []);
-    if (cached.length > 0) {
-      callback(cached);
-    }
+    callback(cached);
 
     if (!isSupabaseConfigured()) {
       return () => {};
@@ -43,7 +41,7 @@ export const conversationService = {
       .order('created_at', { ascending: true })
       .limit(100)
       .then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           const formatted: ChatMessage[] = data.map((item) => ({
             id: item.id,
             role: item.role as 'user' | 'model',
@@ -79,6 +77,14 @@ export const conversationService = {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: MESSAGES_TABLE },
+        () => {
+          localCache.set('messages', []);
+          callback([]);
+        }
+      )
       .subscribe();
 
     return () => {
@@ -88,6 +94,11 @@ export const conversationService = {
 
   clearAllMessages: async (): Promise<void> => {
     localCache.set('messages', []);
+    try {
+      localStorage.removeItem('tala_cache_messages');
+      localStorage.removeItem('pinned_items');
+    } catch (e) {}
+
     if (isSupabaseConfigured()) {
       try {
         await supabase.from(MESSAGES_TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000');

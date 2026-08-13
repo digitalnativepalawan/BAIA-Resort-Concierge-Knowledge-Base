@@ -144,9 +144,6 @@ export class VoiceSessionManager {
     if (this.onSessionUpdateCb) {
       this.onSessionUpdateCb(this.getSession());
     }
-
-    // Auto-start listening on session creation
-    this.startListening();
   }
 
   public endSession(): void {

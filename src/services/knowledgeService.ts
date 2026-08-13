@@ -1,5 +1,6 @@
 import { KnowledgeFile, KnowledgeCategory, KnowledgeProcessingStatus } from '../types';
 import { supabase, isSupabaseConfigured, localCache } from '../lib/supabase';
+import { INITIAL_GUEST_FAQS } from '../data/defaultFaqs';
 import JSZip from 'jszip';
 
 const KNOWLEDGE_TABLE = 'knowledge_documents';
@@ -473,7 +474,33 @@ export const knowledgeService = {
 
     // Do NOT pretend unready/errored files are active knowledge
     docs = (docs || []).filter((d) => d.status === 'Ready' || d.status === undefined);
-    if (!docs || docs.length === 0) return '';
+
+    // Also include FAQs from localStorage or default set
+    let faqs: any[] = [];
+    try {
+      const savedFaqs = localStorage.getItem('tala_guest_faqs');
+      if (savedFaqs) faqs = JSON.parse(savedFaqs);
+    } catch (e) {}
+    if (!faqs || faqs.length === 0) {
+      faqs = INITIAL_GUEST_FAQS;
+    }
+
+    const faqDocs: KnowledgeFile[] = faqs
+      .filter((f) => f.enabled !== false)
+      .map((f) => ({
+        id: f.id,
+        name: `Guest FAQ: ${f.question}`,
+        size: f.answer.length * 2,
+        type: 'text/plain',
+        fileType: 'TXT',
+        content: `Question: ${f.question}\nKeywords: ${f.keywords}\nConfirmed Answer: ${f.answer}`,
+        category: (f.category as KnowledgeCategory) || 'Other',
+        uploadedAt: new Date().toISOString(),
+        status: 'Ready'
+      }));
+
+    const combinedDocs = [...docs, ...faqDocs];
+    if (combinedDocs.length === 0) return '';
 
     const queryTerms = query
       .toLowerCase()
@@ -492,7 +519,7 @@ export const knowledgeService = {
 
     const scoredSnippets: ScoredSnippet[] = [];
 
-    docs.forEach((doc) => {
+    combinedDocs.forEach((doc) => {
       if (!doc.content) return;
       const paragraphs = doc.chunks && doc.chunks.length > 0 ? doc.chunks : doc.content.split(/\n\n+/);
 

@@ -140,8 +140,6 @@ function speakWebSpeech(
     return;
   }
 
-  // Cancel any lingering or stuck speech synthesis immediately
-  window.speechSynthesis.cancel();
   if (window.speechSynthesis.paused) {
     window.speechSynthesis.resume();
   }
@@ -159,8 +157,6 @@ function speakWebSpeech(
 
   const utterance = new SpeechSynthesisUtterance(sanitisedText);
 
-  // Humanlike voice prosody: Add subtle, natural inflection modulation
-  // Questions get slightly higher pitch; warm resort greeting tone gets natural cadence
   let adjustedPitch = pitch;
   let adjustedRate = rate;
   if (sanitisedText.endsWith('?')) {
@@ -175,7 +171,6 @@ function speakWebSpeech(
   const voices = window.speechSynthesis.getVoices();
   let selected: SpeechSynthesisVoice | undefined;
 
-  // On low signal Wi-Fi / weak connection, prioritize local browser female voices for zero network latency
   const netQuality = getNetworkQuality();
   if (netQuality === 'weak' || netQuality === 'offline') {
     selected = getBestFemaleVoice(voices) || voices[0];
@@ -183,7 +178,6 @@ function speakWebSpeech(
     selected = voices.find((v) => v.name === voiceName || v.voiceURI === voiceName);
   }
 
-  // Fallback to best female voice if requested voice isn't present
   if (!selected) {
     selected = getBestFemaleVoice(voices) || voices[0];
   }
@@ -201,7 +195,6 @@ function speakWebSpeech(
   };
 
   utterance.onstart = () => {
-    // Resume again on start in case browser paused audio context
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
@@ -213,7 +206,7 @@ function speakWebSpeech(
     finish();
   };
 
-  // Immediate execution call
+  // Enqueue utterance smoothly into SpeechSynthesis queue
   window.speechSynthesis.speak(utterance);
 }
 

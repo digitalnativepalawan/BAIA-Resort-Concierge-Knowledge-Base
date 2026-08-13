@@ -232,9 +232,7 @@ export default function App() {
   // Real-Time Sync for Chat, Knowledge Docs, and Guest Requests
   useEffect(() => {
     const unsubChat = conversationService.listenChatMessages((remoteMsgs) => {
-      if (remoteMsgs && remoteMsgs.length > 0) {
-        setMessages(remoteMsgs);
-      }
+      setMessages(remoteMsgs || []);
     });
 
     const unsubDocs = knowledgeService.listenDocs((remoteDocs) => {
@@ -370,15 +368,6 @@ export default function App() {
           }
         }
       });
-
-      // Start speech recognition in background for speech token barge-in
-      if (startListeningRef.current) {
-        setTimeout(() => {
-          if (startListeningRef.current && isSpeakingRef.current) {
-            startListeningRef.current(true);
-          }
-        }, 80);
-      }
 
       speechEngine.speakSentenceChunks(
         cleanedText,
@@ -606,8 +595,15 @@ export default function App() {
       return;
     }
 
+    // Safely abort any existing recognition instance to prevent DOMException collisions
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+
     if (state === 'LISTENING' && !isBargeInMode) {
-      if (recognitionRef.current) recognitionRef.current.stop();
       setState('IDLE');
       soundEffects.playListeningEnd();
       return;
@@ -836,41 +832,29 @@ export default function App() {
           path="/"
           element={
             <GuestConcierge
-              talaState={
-                realtimeVoiceSession.status === 'connected'
-                  ? realtimeVoiceSession.voiceState === 'listening'
-                    ? 'LISTENING'
-                    : realtimeVoiceSession.voiceState === 'speaking'
-                    ? 'SPEAKING'
-                    : realtimeVoiceSession.voiceState === 'thinking'
-                    ? 'PROCESSING'
-                    : 'IDLE'
-                  : state
-              }
+              talaState={state}
               onCoreClick={() => {
-                if (realtimeVoiceSession.status === 'connected') {
-                  realtimeVoiceSession.disconnect();
+                if (state === 'LISTENING') {
+                  if (recognitionRef.current) {
+                    try {
+                      recognitionRef.current.abort();
+                    } catch (e) {}
+                    recognitionRef.current = null;
+                  }
+                  setState('IDLE');
+                  soundEffects.playListeningEnd();
                 } else {
-                  realtimeVoiceSession.connect();
+                  stopSpeech();
                   startListening();
                 }
               }}
               speechVolume={speechVolume}
               interimTranscript={interimTranscript}
-              messages={
-                realtimeVoiceSession.session?.messages?.length
-                  ? realtimeVoiceSession.session.messages
-                  : messages
-              }
+              messages={messages}
               onSendMessage={(prompt) => {
-                if (realtimeVoiceSession.status === 'connected') {
-                  realtimeVoiceSession.sendTextMessage(prompt);
-                } else {
-                  sendPromptToTala(prompt);
-                }
+                sendPromptToTala(prompt);
               }}
               onStopSpeech={() => {
-                realtimeVoiceSession.stopSpeech();
                 stopSpeech();
               }}
               continuousListening={settings.continuousListening}
