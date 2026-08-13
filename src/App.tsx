@@ -114,6 +114,7 @@ export default function App() {
   const recognitionRef = useRef<any>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const startListeningRef = useRef<((isBargeInMode?: boolean) => void) | null>(null);
+  const isListeningActiveRef = useRef<boolean>(false);
   const silenceCountRef = useRef<number>(0);
   const isSpeakingRef = useRef<boolean>(false);
   const micBargeInCleanupRef = useRef<(() => void) | null>(null);
@@ -398,6 +399,26 @@ export default function App() {
     [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog, setupMicBargeInListener]
   );
 
+  const stopListening = useCallback(() => {
+    isListeningActiveRef.current = false;
+    if (speechDebounceTimerRef.current) {
+      clearTimeout(speechDebounceTimerRef.current);
+      speechDebounceTimerRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+    setInterimTranscript('');
+    setState((prev) => (prev === 'LISTENING' ? 'IDLE' : prev));
+  }, []);
+
   const stopSpeech = useCallback(() => {
     if (micBargeInCleanupRef.current) {
       micBargeInCleanupRef.current();
@@ -405,15 +426,10 @@ export default function App() {
     }
     isSpeakingRef.current = false;
     speechEngine.stopSpeech();
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-      recognitionRef.current = null;
-    }
+    stopListening();
     setState('IDLE');
     setSpeechVolume(0.2);
-  }, []);
+  }, [stopListening]);
 
   const handleTestVoiceDiagnostic = useCallback(() => {
     stopSpeech();
@@ -595,23 +611,26 @@ export default function App() {
       return;
     }
 
-    // Safely abort any existing recognition instance to prevent DOMException collisions
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch (e) {}
-      recognitionRef.current = null;
-    }
-
-    if (state === 'LISTENING' && !isBargeInMode) {
-      setState('IDLE');
+    // Toggle OFF cleanly if listening is currently active
+    if (isListeningActiveRef.current && !isBargeInMode) {
+      stopListening();
       soundEffects.playListeningEnd();
       return;
     }
 
+    // Safely stop any previous recognition instance
+    stopListening();
+
     if (!isBargeInMode) {
-      stopSpeech();
+      if (micBargeInCleanupRef.current) {
+        micBargeInCleanupRef.current();
+        micBargeInCleanupRef.current = null;
+      }
+      isSpeakingRef.current = false;
+      speechEngine.stopSpeech();
     }
+
+    isListeningActiveRef.current = true;
 
     try {
       let hasSubmitted = false;
@@ -636,7 +655,7 @@ export default function App() {
       };
 
       recognition.onstart = () => {
-        if (!isBargeInMode) {
+        if (isListeningActiveRef.current) {
           setState('LISTENING');
           setInterimTranscript('');
           soundEffects.playListeningStart();
@@ -653,7 +672,7 @@ export default function App() {
       };
 
       recognition.onresult = (event: any) => {
-        if (hasSubmitted) return;
+        if (hasSubmitted || !isListeningActiveRef.current) return;
         triggerBargeIn('transcript token');
 
         let currentInterim = '';
@@ -673,10 +692,12 @@ export default function App() {
           if (speechDebounceTimerRef.current) clearTimeout(speechDebounceTimerRef.current);
           const currentText = currentInterim.trim();
           if (currentText.length > 2) {
+            // 2-second silence threshold VAD mechanism before stopping recognition and submitting prompt
             speechDebounceTimerRef.current = setTimeout(() => {
-              if (hasSubmitted) return;
+              if (hasSubmitted || !isListeningActiveRef.current) return;
               hasSubmitted = true;
-              addLog(`[ FAST VOICE SUBMIT ]: "${currentText}"`, 'success');
+              isListeningActiveRef.current = false;
+              addLog(`[ VAD SILENCE THRESHOLD MET ]: "${currentText}"`, 'success');
               setInterimTranscript('');
               try {
                 recognition.stop();
@@ -684,12 +705,13 @@ export default function App() {
               recognitionRef.current = null;
               const cleanPrompt = currentText.replace(/^(wake up tala|hey tala|tala)[,!\s]*/i, '');
               sendPromptToTala(cleanPrompt.trim() || currentText);
-            }, 550);
+            }, 2000);
           }
         }
 
         if (finalScript && !hasSubmitted) {
           hasSubmitted = true;
+          isListeningActiveRef.current = false;
           if (speechDebounceTimerRef.current) {
             clearTimeout(speechDebounceTimerRef.current);
             speechDebounceTimerRef.current = null;
@@ -713,48 +735,57 @@ export default function App() {
       };
 
       const handleSilenceEnd = () => {
-        if (isSpeakingRef.current) return;
-        setState('IDLE');
-        setInterimTranscript('');
+        isListeningActiveRef.current = false;
+        if (!isSpeakingRef.current) {
+          setState('IDLE');
+          setInterimTranscript('');
+        }
       };
 
       recognition.onerror = (event: any) => {
-        if (event.error !== 'no-speech') {
-          addLog(`Microphone Error: ${event.error}`, 'error');
+        isListeningActiveRef.current = false;
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          addLog(`Microphone Notice: ${event.error}`, 'error');
         }
         handleSilenceEnd();
       };
 
       recognition.onend = () => {
-        if (
-          settings.continuousListening &&
-          !isSpeakingRef.current &&
-          state !== 'PROCESSING'
-        ) {
+        recognitionRef.current = null;
+
+        if (hasSubmitted || !isListeningActiveRef.current || isSpeakingRef.current) {
+          handleSilenceEnd();
+          return;
+        }
+
+        if (settings.continuousListening && isListeningActiveRef.current) {
           setTimeout(() => {
-            if (
-              settings.continuousListening &&
-              !isSpeakingRef.current &&
-              state !== 'PROCESSING'
-            ) {
+            if (settings.continuousListening && isListeningActiveRef.current && !isSpeakingRef.current) {
               try {
-                recognition.start();
-              } catch (e) {}
+                startListening(false);
+              } catch (e) {
+                isListeningActiveRef.current = false;
+                handleSilenceEnd();
+              }
+            } else {
+              isListeningActiveRef.current = false;
+              handleSilenceEnd();
             }
-          }, 150);
-        } else if (state === 'LISTENING' && !isSpeakingRef.current) {
+          }, 200);
+        } else {
           handleSilenceEnd();
         }
       };
 
       recognition.start();
     } catch (e: any) {
+      isListeningActiveRef.current = false;
       if (!isBargeInMode) {
         addLog(`Mic activation error: ${e.message || e}`, 'error');
         setState('IDLE');
       }
     }
-  }, [state, addLog, stopSpeech, sendPromptToTala, speakText]);
+  }, [state, addLog, stopSpeech, sendPromptToTala, speakText, stopListening, settings.continuousListening]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
@@ -834,19 +865,7 @@ export default function App() {
             <GuestConcierge
               talaState={state}
               onCoreClick={() => {
-                if (state === 'LISTENING') {
-                  if (recognitionRef.current) {
-                    try {
-                      recognitionRef.current.abort();
-                    } catch (e) {}
-                    recognitionRef.current = null;
-                  }
-                  setState('IDLE');
-                  soundEffects.playListeningEnd();
-                } else {
-                  stopSpeech();
-                  startListening();
-                }
+                startListening();
               }}
               speechVolume={speechVolume}
               interimTranscript={interimTranscript}
