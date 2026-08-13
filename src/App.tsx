@@ -730,7 +730,23 @@ export default function App() {
       };
 
       recognition.onend = () => {
-        if (state === 'LISTENING' && !isSpeakingRef.current) {
+        if (
+          settings.continuousListening &&
+          !isSpeakingRef.current &&
+          state !== 'PROCESSING'
+        ) {
+          setTimeout(() => {
+            if (
+              settings.continuousListening &&
+              !isSpeakingRef.current &&
+              state !== 'PROCESSING'
+            ) {
+              try {
+                recognition.start();
+              } catch (e) {}
+            }
+          }, 150);
+        } else if (state === 'LISTENING' && !isSpeakingRef.current) {
           handleSilenceEnd();
         }
       };
@@ -749,24 +765,20 @@ export default function App() {
   }, [startListening]);
 
   // Knowledge File Upload Handler
-  const handleUploadKnowledgeFile = useCallback((file: File, category: KnowledgeCategory = 'Property') => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const textContent = (e.target?.result as string) || '';
-      const newDoc: KnowledgeFile = {
-        id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        name: file.name,
-        size: file.size,
-        type: file.type || 'text/plain',
-        content: textContent,
-        uploadedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        category
-      };
-      setKnowledgeFiles((prev) => [newDoc, ...prev]);
-      knowledgeService.saveDoc(newDoc);
-      addLog(`Added knowledge doc "${file.name}" under ${category}`, 'success');
-    };
-    reader.readAsText(file);
+  const handleUploadKnowledgeFile = useCallback(async (file: File, category: KnowledgeCategory = 'Property') => {
+    try {
+      const processedDoc = await knowledgeService.processAndSaveFile(file, category);
+      setKnowledgeFiles((prev) => [processedDoc, ...prev.filter((f) => f.id !== processedDoc.id)]);
+      addLog(`Processed knowledge doc "${file.name}" under ${category}. Status: ${processedDoc.status}`, 'success');
+    } catch (err: any) {
+      addLog(`Error processing knowledge doc "${file.name}": ${err.message}`, 'error');
+    }
+  }, [addLog]);
+
+  const handleUpdateKnowledgeCategory = useCallback(async (id: string, newCategory: KnowledgeCategory) => {
+    const updated = await knowledgeService.updateDocCategory(id, newCategory);
+    setKnowledgeFiles((prev) => prev.map((f) => (f.id === id ? updated : f)));
+    addLog(`Updated category for knowledge doc ${id} to ${newCategory}`, 'info');
   }, [addLog]);
 
   const handleDeleteKnowledgeFile = useCallback((id: string) => {
@@ -824,13 +836,43 @@ export default function App() {
           path="/"
           element={
             <GuestConcierge
-              talaState={state}
-              onCoreClick={startListening}
+              talaState={
+                realtimeVoiceSession.status === 'connected'
+                  ? realtimeVoiceSession.voiceState === 'listening'
+                    ? 'LISTENING'
+                    : realtimeVoiceSession.voiceState === 'speaking'
+                    ? 'SPEAKING'
+                    : realtimeVoiceSession.voiceState === 'thinking'
+                    ? 'PROCESSING'
+                    : 'IDLE'
+                  : state
+              }
+              onCoreClick={() => {
+                if (realtimeVoiceSession.status === 'connected') {
+                  realtimeVoiceSession.disconnect();
+                } else {
+                  realtimeVoiceSession.connect();
+                  startListening();
+                }
+              }}
               speechVolume={speechVolume}
               interimTranscript={interimTranscript}
-              messages={messages}
-              onSendMessage={sendPromptToTala}
-              onStopSpeech={stopSpeech}
+              messages={
+                realtimeVoiceSession.session?.messages?.length
+                  ? realtimeVoiceSession.session.messages
+                  : messages
+              }
+              onSendMessage={(prompt) => {
+                if (realtimeVoiceSession.status === 'connected') {
+                  realtimeVoiceSession.sendTextMessage(prompt);
+                } else {
+                  sendPromptToTala(prompt);
+                }
+              }}
+              onStopSpeech={() => {
+                realtimeVoiceSession.stopSpeech();
+                stopSpeech();
+              }}
               continuousListening={settings.continuousListening}
               onToggleContinuousListening={() =>
                 setSettings((prev) => ({ ...prev, continuousListening: !prev.continuousListening }))
@@ -840,6 +882,8 @@ export default function App() {
               onSignOut={handleSignOut}
               soundEnabled={settings.soundEnabled}
               onToggleSound={() => setSettings((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
+              audioStream={realtimeVoiceSession.audioStream || undefined}
+              latencyMs={realtimeVoiceSession.latencyMs}
             />
           }
         />
@@ -887,8 +931,10 @@ export default function App() {
             element={
               <AdminKnowledgePage
                 files={knowledgeFiles}
+                messages={messages}
                 onUploadFile={handleUploadKnowledgeFile}
                 onDeleteFile={handleDeleteKnowledgeFile}
+                onUpdateCategory={handleUpdateKnowledgeCategory}
               />
             }
           />

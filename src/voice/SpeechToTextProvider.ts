@@ -26,7 +26,7 @@ export class SpeechToTextProvider {
 
     try {
       this.recognition = new SpeechRecognition();
-      this.recognition.continuous = options?.continuous ?? false;
+      this.recognition.continuous = options?.continuous ?? true;
       this.recognition.interimResults = true;
       this.recognition.lang = options?.lang || 'en-US';
 
@@ -65,7 +65,7 @@ export class SpeechToTextProvider {
       };
 
       this.recognition.onerror = (event: any) => {
-        if (event.error !== 'no-speech' && this.callbacks.onError) {
+        if (event.error !== 'no-speech' && event.error !== 'aborted' && this.callbacks.onError) {
           this.callbacks.onError(event.error);
         }
       };

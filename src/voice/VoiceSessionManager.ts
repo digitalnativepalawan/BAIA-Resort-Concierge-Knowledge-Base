@@ -144,6 +144,9 @@ export class VoiceSessionManager {
     if (this.onSessionUpdateCb) {
       this.onSessionUpdateCb(this.getSession());
     }
+
+    // Auto-start listening on session creation
+    this.startListening();
   }
 
   public endSession(): void {
@@ -168,14 +171,27 @@ export class VoiceSessionManager {
   }
 
   public startListening(): void {
-    if (this.state === 'listening') return;
+    if (this.state === 'listening' && this.stt.getIsListening()) return;
 
     this.tts.stop();
     this.updateLastActivity();
     this.setState('listening');
     this.audioManager.playListeningStart();
 
+    let isProcessingUtterance = false;
     let interimDebounce: NodeJS.Timeout | null = null;
+
+    const processUtterance = (text: string) => {
+      if (isProcessingUtterance) return;
+      const clean = text.trim();
+      if (!clean) return;
+      isProcessingUtterance = true;
+      if (interimDebounce) {
+        clearTimeout(interimDebounce);
+        interimDebounce = null;
+      }
+      this.handleUserUtterance(clean);
+    };
 
     this.stt.start({
       onStart: () => {
@@ -194,29 +210,44 @@ export class VoiceSessionManager {
         if (interimDebounce) clearTimeout(interimDebounce);
         if (text.trim().length > 3) {
           interimDebounce = setTimeout(() => {
-            this.handleUserUtterance(text);
-          }, 600);
+            processUtterance(text);
+          }, 800);
         }
       },
       onFinalResult: (text) => {
-        if (interimDebounce) clearTimeout(interimDebounce);
         if (this.onTranscriptCb) {
           this.onTranscriptCb(text, true);
         }
-        if (text.trim()) {
-          this.handleUserUtterance(text);
-        }
+        processUtterance(text);
       },
       onError: (err) => {
         console.warn('STT error:', err);
-        this.setState('idle');
       },
       onEnd: () => {
-        if (this.state === 'listening' && !this.tts.getIsSpeaking()) {
+        if (
+          this.session.connectionState === 'active' &&
+          this.settings.continuousListening &&
+          !this.tts.getIsSpeaking() &&
+          this.state !== 'thinking' &&
+          this.state !== 'speaking'
+        ) {
+          // Auto-restart STT to maintain continuous listening across turns and browser timeouts
+          setTimeout(() => {
+            if (
+              this.session.connectionState === 'active' &&
+              this.settings.continuousListening &&
+              !this.tts.getIsSpeaking() &&
+              this.state !== 'thinking' &&
+              this.state !== 'speaking'
+            ) {
+              this.startListening();
+            }
+          }, 150);
+        } else if (this.state === 'listening') {
           this.setState('idle');
         }
       }
-    }, { continuous: this.settings.continuousListening });
+    }, { continuous: true });
   }
 
   public stopListening(): void {

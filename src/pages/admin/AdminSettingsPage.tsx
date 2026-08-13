@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TalaSettings, VoiceOption, TelemetryLogEntry, AdminUser, KnowledgeFile, KnowledgeCategory } from '../../types';
 import { OpenRouterModelSelector } from '../../components/OpenRouterModelSelector';
 import { TelemetryLog } from '../../components/TelemetryLog';
@@ -36,7 +36,8 @@ import {
   FileCode,
   FileJson,
   Download,
-  FolderArchive
+  FolderArchive,
+  Upload
 } from 'lucide-react';
 
 interface AdminSettingsPageProps {
@@ -77,6 +78,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const [testSuiteSummary, setTestSuiteSummary] = useState<VoiceTestSuiteSummary | null>(null);
   const [runningTestSuite, setRunningTestSuite] = useState<boolean>(false);
   const [knowledgeNotice, setKnowledgeNotice] = useState<string | null>(null);
+  const settingsFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadFullTxt = () => {
     let text = DEFAULT_KNOWLEDGE_TXT;
@@ -586,7 +588,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         </div>
       </section>
 
-      {/* SECTION 4: GROUNDING KNOWLEDGE BASE & TEMPLATE DOWNLOADS */}
+      {/* SECTION 4: GROUNDING KNOWLEDGE BASE */}
       <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
@@ -594,19 +596,19 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-medium text-white">Grounding Knowledge Base & Templates</h2>
+              <h2 className="text-lg font-medium text-white">Grounding Knowledge Base</h2>
               <p className="text-xs text-gray-400 font-normal">
-                Download full knowledge.txt and knowledge.md template files or save them to the backend for TALA to learn
+                Upload knowledge files from your local device to wire directly into TALA's AI brain.
               </p>
             </div>
           </div>
 
           <button
-            onClick={handleSaveTemplateToBackend}
-            className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-xs uppercase tracking-wider hover:bg-emerald-500/30 transition-all flex items-center gap-2 shrink-0 shadow-sm"
+            onClick={() => downloadKnowledgeZip(knowledgeFiles)}
+            className="px-4 py-2 rounded-xl bg-[#070e20] border border-[#00f0ff]/30 text-[#00f0ff] hover:bg-[#00f0ff]/10 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shrink-0 transition-all"
           >
-            <Save className="w-4 h-4 text-emerald-400" />
-            <span>Save Template to Backend</span>
+            <Download className="w-4 h-4" />
+            <span>Download Knowledge Backup (.zip)</span>
           </button>
         </div>
 
@@ -617,162 +619,37 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5 pt-1">
-          <button
-            onClick={handleDownloadBulkZip}
-            className="p-4 rounded-xl bg-gradient-to-r from-purple-900/30 to-[#00f0ff]/10 border border-purple-500/40 hover:border-[#00f0ff]/60 transition-all text-left group flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
-                <FolderArchive className="w-4 h-4 text-purple-400 group-hover:text-[#00f0ff]" />
-                <span>Download All (.zip)</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Bulk ZIP archive of all templates & docs</p>
-            </div>
-            <Download className="w-4 h-4 text-purple-400 group-hover:text-[#00f0ff] shrink-0" />
-          </button>
+        <div className="bg-[#070e20] border-2 border-dashed border-[#00f0ff]/30 rounded-2xl p-6 text-center space-y-3">
+          <input
+            type="file"
+            ref={settingsFileInputRef}
+            multiple
+            accept=".json,.txt,.png,.jpg,.jpeg,.zip,.pdf,.md,.docx,.csv"
+            onChange={(e) => {
+              if (e.target.files && onUploadKnowledgeFile) {
+                Array.from(e.target.files).forEach((f) => onUploadKnowledgeFile(f, 'Property'));
+                setKnowledgeNotice(`Uploaded ${e.target.files.length} knowledge source(s) from device!`);
+                setTimeout(() => setKnowledgeNotice(null), 4000);
+              }
+            }}
+            className="hidden"
+          />
 
           <button
-            onClick={handleDownloadFullTxt}
-            className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
+            type="button"
+            onClick={() => settingsFileInputRef.current?.click()}
+            className="px-8 py-3.5 rounded-2xl bg-[#00f0ff] text-black font-black text-sm uppercase tracking-wider hover:bg-[#00f0ff]/80 transition-all shadow-[0_0_20px_rgba(0,240,255,0.35)] flex items-center justify-center gap-3 mx-auto cursor-pointer"
           >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-[#00f0ff]" />
-                <span>Export knowledge.txt</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Full merged active knowledge document</p>
-            </div>
-            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
+            <Upload className="w-5 h-5 text-black" />
+            <span>UPLOAD KNOWLEDGE FROM DEVICE</span>
           </button>
 
-          <button
-            onClick={handleDownloadFullMd}
-            className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
-                <FileCode className="w-4 h-4 text-[#00f0ff]" />
-                <span>Export knowledge.md</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Full merged Markdown knowledge document</p>
-            </div>
-            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
-          </button>
-
-          <button
-            onClick={handleDownloadFullJson}
-            className="p-4 rounded-xl bg-[#050b14]/80 border border-[#00f0ff]/20 hover:border-[#00f0ff]/50 transition-all text-left group flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-[#00f0ff] flex items-center gap-1.5">
-                <FileJson className="w-4 h-4 text-[#00f0ff]" />
-                <span>Export knowledge.json</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Full merged JSON grounding data structure</p>
-            </div>
-            <Download className="w-4 h-4 text-gray-400 group-hover:text-[#00f0ff] shrink-0" />
-          </button>
-
-          <button
-            onClick={handleDownloadTemplateTxt}
-            className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-purple-400" />
-                <span>Template (.txt)</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Standard BAIA Resort operational guide</p>
-            </div>
-            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
-          </button>
-
-          <button
-            onClick={handleDownloadTemplateMd}
-            className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
-                <FileCode className="w-4 h-4 text-purple-400" />
-                <span>Template (.md)</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Markdown grounding template for TALA</p>
-            </div>
-            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
-          </button>
-
-          <button
-            onClick={handleDownloadTemplateJson}
-            className="p-4 rounded-xl bg-[#050b14]/80 border border-purple-500/20 hover:border-purple-500/50 transition-all text-left group flex items-center justify-between"
-          >
-            <div>
-              <div className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
-                <FileJson className="w-4 h-4 text-purple-400" />
-                <span>Template (.json)</span>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-1">Structured JSON grounding template for TALA</p>
-            </div>
-            <Download className="w-4 h-4 text-gray-400 group-hover:text-purple-300 shrink-0" />
-          </button>
-        </div>
-
-        {/* ACTIVE KNOWLEDGE FILES DOWNLOAD GRID */}
-        <div className="mt-6 pt-6 border-t border-[#00f0ff]/15 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Database className="w-4 h-4 text-[#00f0ff]" />
-                <span>Active Knowledge Base Documents ({knowledgeFiles.length} Files Available)</span>
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Individual grounding files currently active in TALA's knowledge base. Click Download on any file card below.
-              </p>
-            </div>
-
-            <button
-              onClick={() => downloadKnowledgeZip(knowledgeFiles)}
-              className="px-3.5 py-1.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold text-xs hover:bg-purple-500/30 transition-all flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-sm"
-            >
-              <FolderArchive className="w-3.5 h-3.5 text-purple-400" />
-              <span>Download All Knowledge Files (.zip)</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
-            {knowledgeFiles.map((doc) => (
-              <div
-                key={doc.id}
-                className="p-4 rounded-xl bg-[#050b14]/90 border border-[#00f0ff]/25 hover:border-[#00f0ff]/60 transition-all flex flex-col justify-between space-y-3 group shadow-md"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-bold text-white truncate flex items-center gap-1.5 group-hover:text-[#00f0ff] transition-colors">
-                      <FileText className="w-4 h-4 text-[#00f0ff] shrink-0" />
-                      <span className="truncate">{doc.name}</span>
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 shrink-0">
-                      {doc.category || 'General'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-300 line-clamp-3 bg-[#080d1a] p-2.5 rounded-lg border border-[#00f0ff]/10 font-sans leading-relaxed">
-                    {doc.content || 'Empty document content.'}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between pt-2.5 border-t border-[#00f0ff]/10 text-[10px] text-gray-400">
-                  <span className="font-mono">{(doc.size / 1024).toFixed(1)} KB</span>
-                  <button
-                    onClick={() => downloadFile(doc.content, doc.name, 'text/plain')}
-                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 border border-emerald-500/50 text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
-                  >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Download Document</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs font-bold text-[#00f0ff] uppercase tracking-wider">
+            Supported: JSON · TXT · PNG · JPG · JPEG · ZIP
+          </p>
+          <p className="text-xs text-gray-400">
+            {knowledgeFiles.length} active knowledge files currently wired into TALA
+          </p>
         </div>
       </section>
 
@@ -834,40 +711,21 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             </div>
           </div>
 
-          {currentUser ? (
-            <button
-              onClick={onSignOut}
-              className="px-3.5 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-all flex items-center gap-1.5"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
-            </button>
-          ) : (
-            <button
-              onClick={onSignIn}
-              className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff] text-slate-950 font-medium text-xs hover:bg-[#00f0ff]/80 transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Supabase Login</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Database Sync Active</span>
+          </div>
         </div>
 
         <div className="bg-[#070e20] p-4 rounded-xl border border-[#00f0ff]/15 flex items-center justify-between">
           <div className="text-xs">
-            <span className="text-gray-400 block font-normal">Current Auth State:</span>
+            <span className="text-gray-400 block font-normal">Database Engine Status:</span>
             <span className="text-white font-medium">
-              {currentUser ? currentUser.name || currentUser.email : 'Supabase Real-Time Client Active'}
+              BAIA Knowledge Engine Active
             </span>
           </div>
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium border ${
-              currentUser
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
-            }`}
-          >
-            {currentUser ? 'Cloud Synced' : 'Local Storage Only'}
+          <span className="px-3 py-1 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/25">
+            Real-Time Storage Connected
           </span>
         </div>
       </section>

@@ -63,13 +63,29 @@ export interface TalaSettings {
 export type KnowledgeCategory = 
   | 'Property'
   | 'Rooms'
+  | 'Amenities'
   | 'Food & Breakfast'
+  | 'House Rules'
+  | 'Check-in & Checkout'
   | 'Transportation'
-  | 'Activities'
-  | 'San Vicente'
+  | 'Tours & Activities'
+  | 'Local Area'
+  | 'Housekeeping'
+  | 'Maintenance'
   | 'Policies'
-  | 'Emergency'
+  | 'Emergency Information'
   | 'Other';
+
+export type KnowledgeProcessingStatus = 
+  | 'Selected'
+  | 'Uploading'
+  | 'Parsing'
+  | 'Classifying'
+  | 'Chunking'
+  | 'Embedding'
+  | 'Ready'
+  | 'Needs Review'
+  | 'Error';
 
 export interface KnowledgeFile {
   id: string;
@@ -77,9 +93,17 @@ export interface KnowledgeFile {
   size: number;
   content: string;
   type: string;
+  fileType?: string; // 'PDF' | 'TXT' | 'MD' | 'JSON' | 'DOCX' | 'CSV'
   uploadedAt: string;
+  lastUpdated?: string;
   category?: KnowledgeCategory;
   description?: string;
+  status?: KnowledgeProcessingStatus;
+  chunkCount?: number;
+  embeddingStatus?: string;
+  embeddingProvider?: string;
+  errorMessage?: string;
+  chunks?: string[];
 }
 
 export type GuestRequestCategory = 

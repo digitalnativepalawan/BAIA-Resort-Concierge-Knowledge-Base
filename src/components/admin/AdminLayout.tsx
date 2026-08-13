@@ -83,43 +83,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <span>Guest Concierge</span>
               </Link>
 
-              {currentUser ? (
-                <div className="flex items-center gap-2 bg-[#0a1228]/80 border border-emerald-500/30 rounded-xl px-3 py-1.5">
-                  {currentUser.photoURL ? (
-                    <img
-                      src={currentUser.photoURL}
-                      alt={currentUser.name || 'Operator'}
-                      className="w-5 h-5 rounded-full border border-emerald-400/50"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <UserIcon className="w-4 h-4 text-emerald-400" />
-                  )}
-                  <div className="hidden sm:flex flex-col text-left font-inter leading-none">
-                    <span className="text-xs text-white font-medium truncate max-w-[110px]">
-                      {currentUser.name || currentUser.email?.split('@')[0]}
-                    </span>
-                    <span className="text-[9px] text-emerald-400 flex items-center gap-0.5 mt-0.5 font-normal">
-                      <Database className="w-2.5 h-2.5" /> Supabase Sync
-                    </span>
-                  </div>
-                  <button
-                    onClick={onSignOut}
-                    title="Sign out"
-                    className="p-1 hover:text-red-400 text-gray-400 transition-colors ml-1"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                  </button>
+              <div className="flex items-center gap-2 bg-[#0a1228]/90 border border-[#00f0ff]/30 rounded-xl px-3 py-1.5 shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00f0ff] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00f0ff]"></span>
+                </span>
+                <div className="flex flex-col text-left font-inter leading-none">
+                  <span className="text-xs text-white font-semibold tracking-tight">
+                    BAIA Admin Console
+                  </span>
+                  <span className="text-[9px] text-[#00f0ff] flex items-center gap-1 mt-0.5 font-medium">
+                    <Database className="w-2.5 h-2.5" /> Knowledge Engine Active
+                  </span>
                 </div>
-              ) : (
-                <button
-                  onClick={onSignIn}
-                  className="px-3 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 text-xs font-medium flex items-center gap-1.5"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Supabase Login</span>
-                </button>
-              )}
+              </div>
             </div>
           </header>
 
