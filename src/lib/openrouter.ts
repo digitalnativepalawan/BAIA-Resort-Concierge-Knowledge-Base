@@ -79,7 +79,7 @@ function generateGroundedLocalResponse(prompt: string, contextRoom = 'Villa 101'
     };
     requestService.saveRequest(newReq);
     return {
-      responseText: `Certainly! I have logged a housekeeping request for your villa for: ${prompt}. Our team will have this delivered to you in approximately 15 minutes.`,
+      responseText: `Mabuhay! I would be delighted to take care of that for you. I've logged a housekeeping request for your villa for ${prompt}, and our team will deliver it shortly.`,
       model: 'TALA Local Grounded Brain (Agentic Dispatch)'
     };
   }
@@ -109,7 +109,7 @@ function generateGroundedLocalResponse(prompt: string, contextRoom = 'Villa 101'
     };
     requestService.saveRequest(newReq);
     return {
-      responseText: `I apologize for any inconvenience. I have immediately dispatched a high-priority maintenance ticket to our engineering team. A technician will visit your villa shortly.`,
+      responseText: `I apologize for any discomfort! I have immediately notified our on-duty resort engineering team. A technician will visit your villa in just a few minutes to assist you.`,
       model: 'TALA Local Grounded Brain (Agentic Dispatch)'
     };
   }
@@ -135,7 +135,7 @@ function generateGroundedLocalResponse(prompt: string, contextRoom = 'Villa 101'
     };
     requestService.saveRequest(newReq);
     return {
-      responseText: `Wonderful! I have sent your dining order to the kitchen team at BAIA Ocean Table. Your order will be prepared fresh and delivered to your villa in 20 to 30 minutes.`,
+      responseText: `Wonderful choice! I've placed your order directly with the kitchen at BAIA Ocean Table. It will be prepared fresh and delivered to your villa in about 20 minutes.`,
       model: 'TALA Local Grounded Brain (Agentic Dispatch)'
     };
   }
@@ -162,7 +162,7 @@ function generateGroundedLocalResponse(prompt: string, contextRoom = 'Villa 101'
     };
     requestService.saveRequest(newReq);
     return {
-      responseText: `I have arranged a resort transfer for you. A buggy driver will arrive at your villa entrance in about 5 to 8 minutes.`,
+      responseText: `With pleasure! I have arranged a resort transfer for you. A friendly driver will arrive at your villa entrance in about 5 minutes.`,
       model: 'TALA Local Grounded Brain (Agentic Dispatch)'
     };
   }
@@ -187,28 +187,28 @@ function generateGroundedLocalResponse(prompt: string, contextRoom = 'Villa 101'
   // 6. Direct Operational Questions
   if (query.includes('wifi') || query.includes('wi-fi') || query.includes('internet') || query.includes('password')) {
     return {
-      responseText: `Our complimentary high-speed fiber Wi-Fi network is "BAIA_Guest_5G" and the password is "LongBeachParadise2026". It is accessible across all villas and dining areas.`,
+      responseText: `Our complimentary high-speed fiber Wi-Fi is "BAIA_Guest_5G" and the password is "LongBeachParadise2026". It is available throughout the resort and on the beach.`,
       model: 'TALA Local Grounded Brain'
     };
   }
 
   if (query.includes('breakfast') || query.includes('morning food')) {
     return {
-      responseText: `Breakfast is served daily at BAIA Ocean Table from 6:30 AM to 10:30 AM. It is complimentary for all registered villa guests with Filipino and international options.`,
+      responseText: `Breakfast is served daily at BAIA Ocean Table from 6:30 AM to 10:30 AM with fresh tropical fruit, bakery delights, and Filipino specialties.`,
       model: 'TALA Local Grounded Brain'
     };
   }
 
   if (query.includes('check-in') || query.includes('checkin') || query.includes('check-out') || query.includes('checkout')) {
     return {
-      responseText: `Standard check-in time is 2:00 PM and check-out time is 12:00 PM. If you need early arrival, late check-out, or luggage storage, please let me know!`,
+      responseText: `Check-in begins at 2:00 PM and check-out is at 12:00 PM. Please let me know if you would like complimentary luggage storage or a late check-out arrangement!`,
       model: 'TALA Local Grounded Brain'
     };
   }
 
   // 7. Conversational Warm Fallback
   return {
-    responseText: `Mabuhay! I am TALA, your BAIA Resort Palawan concierge. How may I assist you with villa services, dining orders, island hopping tours, or airport transfers today?`,
+    responseText: `Mabuhay! I am TALA, your BAIA Resort Palawan concierge. How can I make your stay wonderful with villa services, dining, or island adventures today?`,
     model: 'TALA Local Grounded Brain'
   };
 }

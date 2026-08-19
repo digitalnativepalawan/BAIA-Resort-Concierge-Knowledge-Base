@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArcReactorHUD } from '../components/ArcReactorHUD';
+import { NaturalAgentOrb } from '../components/NaturalAgentOrb';
 import { AudioControlsHUD } from '../components/AudioControlsHUD';
 import { ConversationStream } from '../components/ConversationStream';
 import { CommandBar } from '../components/CommandBar';
-import { DualTelemetryClocks } from '../components/DualTelemetryClocks';
 import { KapwaLogo } from '../components/KapwaLogo';
+import { ThemeSelectorModal } from '../components/ThemeSelectorModal';
+import { RESORT_THEMES, ResortTheme, ResortThemeId } from '../data/themes';
 import { TalaState, ChatMessage, AdminUser } from '../types';
 import {
   Sparkles,
+  Palette,
   SlidersHorizontal,
   Volume2,
   VolumeX,
@@ -20,12 +22,9 @@ import {
   Bike,
   Compass,
   Clock,
-  Activity,
-  Wifi,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
-  Radio
+  Waves,
+  Sun,
+  ShieldCheck
 } from 'lucide-react';
 
 interface GuestConciergeProps {
@@ -55,28 +54,28 @@ interface GuestConciergeProps {
 const GUEST_QUICK_CHIPS = [
   {
     icon: Utensils,
-    label: 'Do you have vegan food?',
-    prompt: 'Do you have vegan or vegetarian food options at BAIA Resort?'
-  },
-  {
-    icon: Bus,
-    label: 'How to get here from El Nido?',
-    prompt: 'How do I get to BAIA Resort from El Nido or Puerto Princesa?'
-  },
-  {
-    icon: Bike,
-    label: 'Can I rent a motorbike?',
-    prompt: 'Can I rent a motorbike in San Vicente to explore Long Beach?'
+    label: 'Vegan & Dining Options',
+    prompt: 'Do you have vegan, vegetarian, or local dining options at BAIA Ocean Table?'
   },
   {
     icon: Compass,
-    label: 'What island tours do you offer?',
-    prompt: 'What island hopping tours and water activities do you offer?'
+    label: 'Island Hopping & Tours',
+    prompt: 'What island hopping tours, snorkeling, and water activities do you recommend in San Vicente?'
+  },
+  {
+    icon: Bike,
+    label: 'Motorbike & Long Beach',
+    prompt: 'Can I rent a motorbike in San Vicente to explore the 14km Long Beach?'
+  },
+  {
+    icon: Bus,
+    label: 'Transfers & Shuttles',
+    prompt: 'How do I arrange a shuttle transfer to El Nido, San Vicente Airport, or Puerto Princesa?'
   },
   {
     icon: Clock,
-    label: 'What are check-in times?',
-    prompt: 'What are your check-in and checkout times and guest services?'
+    label: 'Check-in & Villa Care',
+    prompt: 'What are your check-in and checkout times, and how do I request fresh towels or housekeeping?'
   },
 ];
 
@@ -103,93 +102,149 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
   onSpeechRateChange,
   onTestVoice
 }) => {
-  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true);
-  const [liveLatency, setLiveLatency] = useState<number>(latencyMs || 24);
-  const [isMeasuringPing, setIsMeasuringPing] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (typeof latencyMs === 'number' && latencyMs > 0) {
-      setLiveLatency(latencyMs);
-    } else {
-      const timer = setInterval(() => {
-        const variance = Math.floor(Math.random() * 8) - 4;
-        setLiveLatency((prev) => Math.max(12, Math.min(68, prev + variance)));
-      }, 2000);
-      return () => clearInterval(timer);
+  // Theme of the Day & Custom Wallpaper State
+  const [selectedThemeId, setSelectedThemeId] = useState<ResortThemeId>(() => {
+    const saved = localStorage.getItem('tala_resort_theme');
+    if (saved && RESORT_THEMES.some((t) => t.id === saved)) {
+      return saved as ResortThemeId;
     }
-  }, [latencyMs]);
+    return 'palawan_twilight';
+  });
 
-  const handleRunPingTest = async () => {
-    setIsMeasuringPing(true);
-    const start = performance.now();
-    try {
-      await fetch('/api/health', { cache: 'no-store' }).catch(() => {});
-    } catch (e) {
-      // Ignore network exception
-    }
-    const end = performance.now();
-    const measured = Math.max(8, Math.round(end - start));
-    setLiveLatency(measured);
-    setIsMeasuringPing(false);
+  const [customBgImage, setCustomBgImage] = useState<string | null>(() => {
+    return localStorage.getItem('tala_custom_bg_image') || null;
+  });
+
+  const [bgDimLevel, setBgDimLevel] = useState<number>(() => {
+    const saved = localStorage.getItem('tala_bg_dim_level');
+    return saved ? parseFloat(saved) : 0.55;
+  });
+
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
+
+  const activeTheme: ResortTheme =
+    RESORT_THEMES.find((t) => t.id === selectedThemeId) || RESORT_THEMES[0];
+
+  const handleSelectTheme = (themeId: ResortThemeId) => {
+    setSelectedThemeId(themeId);
+    localStorage.setItem('tala_resort_theme', themeId);
   };
 
+  const handleUploadCustomBg = (base64Image: string) => {
+    setCustomBgImage(base64Image);
+    try {
+      localStorage.setItem('tala_custom_bg_image', base64Image);
+    } catch (e) {
+      console.warn('Custom background exceeded localStorage limit, stored in memory.');
+    }
+  };
+
+  const handleRemoveCustomBg = () => {
+    setCustomBgImage(null);
+    localStorage.removeItem('tala_custom_bg_image');
+  };
+
+  const handleChangeBgDim = (level: number) => {
+    setBgDimLevel(level);
+    localStorage.setItem('tala_bg_dim_level', level.toString());
+  };
+
+  // Find the latest speaking subtitle text
+  const currentSubtitles =
+    interimTranscript ||
+    (talaState === 'SPEAKING' && messages.length > 0
+      ? messages[messages.length - 1].content
+      : undefined);
+
   return (
-    <div className="min-h-screen bg-[#0a1228] text-[#e0e7ff] flex flex-col font-inter selection:bg-[#00f0ff] selection:text-black relative overflow-x-hidden">
-      {/* Background Subtle Radial Glow Accent */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#00f0ff]/10 via-[#0f1d3a]/90 to-[#0a1228]" />
+    <div
+      className="min-h-screen text-[#f1f5f9] flex flex-col font-sans relative overflow-x-hidden transition-all duration-700 select-none"
+      style={{
+        background: customBgImage ? '#000000' : activeTheme.bgGradient,
+      }}
+    >
+      {/* Custom Uploaded Background Photo Wallpaper */}
+      {customBgImage && (
+        <div
+          className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000"
+          style={{
+            backgroundImage: `url(${customBgImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(0px)',
+          }}
+        >
+          {/* Adjustable Dimming Overlay Tint for High Readability */}
+          <div
+            className="absolute inset-0 transition-colors duration-300"
+            style={{ backgroundColor: `rgba(0, 0, 0, ${bgDimLevel})` }}
+          />
+        </div>
+      )}
 
-      {/* Top Guest Header Bar */}
-      <header className="relative z-20 bg-[#0f1d3a]/80 border-b border-[#00f0ff]/20 px-4 sm:px-8 py-3 flex items-center justify-between backdrop-blur-md shadow-sm gap-4">
+      {/* Subtle Bioluminescent Ambient Bloom Vignette */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-700 opacity-60"
+        style={{
+          background: `radial-gradient(ellipse at 50% 30%, ${activeTheme.orbGlow} 0%, rgba(0,0,0,0) 70%)`,
+        }}
+      />
+
+      {/* Top Resort Header Bar */}
+      <header className="relative z-20 px-4 sm:px-8 py-3.5 flex items-center justify-between backdrop-blur-md border-b border-white/10 bg-black/20">
         {/* Brand Identity / Kapwa Logo */}
-        <KapwaLogo />
-
-        {/* Dual Telemetry Clocks */}
-        <div className="hidden md:flex items-center">
-          <DualTelemetryClocks />
+        <div className="flex items-center gap-3">
+          <KapwaLogo />
+          <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">
+            <span
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ backgroundColor: activeTheme.accentColor }}
+            />
+            <span className="font-light tracking-wide">San Vicente, Palawan</span>
+          </div>
         </div>
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Persistent Network Signal Indicator */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0a1228]/80 border border-[#00f0ff]/20 text-[11px] font-mono text-cyan-200"
-            title={`Network Latency: ${liveLatency}ms • TALA Voice Connection`}
+          {/* Theme & Wallpaper Selector Trigger */}
+          <button
+            onClick={() => setIsThemeModalOpen(true)}
+            className="px-3 py-1.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white transition-all text-xs font-medium flex items-center gap-2 backdrop-blur-lg shadow-sm group active:scale-95"
+            title="Choose Theme of the Day or upload custom photo wallpaper"
           >
-            <Wifi
-              className={`w-3.5 h-3.5 ${
-                liveLatency < 100
-                  ? 'text-emerald-400'
-                  : liveLatency < 250
-                  ? 'text-amber-400'
-                  : 'text-red-400'
-              }`}
-            />
-            <span className="hidden xs:inline font-semibold">{liveLatency}ms</span>
-          </div>
+            <Palette className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" style={{ color: activeTheme.accentColor }} />
+            <span className="hidden sm:inline font-normal">{customBgImage ? 'Custom Wallpaper' : activeTheme.name}</span>
+            <span className="sm:hidden">Theme</span>
+          </button>
 
           {/* Sound FX Toggle */}
           <button
             onClick={onToggleSound}
-            className="p-2 rounded-xl bg-[#0a1228]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs"
-            title={soundEnabled ? 'Mute Sound FX' : 'Enable Sound FX'}
+            className="p-2 rounded-2xl bg-white/5 hover:bg-white/15 border border-white/10 text-white/80 hover:text-white transition-all text-xs"
+            title={soundEnabled ? 'Mute Interface Chimes' : 'Enable Interface Chimes'}
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-[#00f0ff]" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
+            {soundEnabled ? (
+              <Volume2 className="w-4 h-4" style={{ color: activeTheme.accentColor }} />
+            ) : (
+              <VolumeX className="w-4 h-4 text-gray-400" />
+            )}
           </button>
 
           {/* Admin Management Portal Link */}
           <Link
             to="/admin"
-            className="px-3.5 py-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all text-xs font-medium flex items-center gap-1.5 shadow-sm"
+            className="px-3 py-1.5 rounded-2xl bg-white/5 hover:bg-white/15 border border-white/10 text-gray-300 hover:text-white transition-all text-xs font-medium flex items-center gap-1.5"
+            title="Open Admin Management & Brain Knowledge Portal"
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#00f0ff]" />
-            <span className="hidden sm:inline">Admin Portal</span>
+            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400" />
+            <span className="hidden md:inline">Admin</span>
           </Link>
 
           {/* User Auth Sync Status */}
           {currentUser ? (
             <button
               onClick={onSignOut}
-              className="p-2 rounded-xl bg-[#0a1228]/80 border border-emerald-500/30 text-emerald-400 hover:text-red-400 transition-colors"
+              className="p-2 rounded-2xl bg-white/5 hover:bg-white/15 border border-emerald-500/30 text-emerald-400 hover:text-rose-400 transition-colors"
               title={`Signed in as ${currentUser.name || currentUser.email}. Click to sign out.`}
             >
               <UserIcon className="w-4 h-4" />
@@ -197,8 +252,8 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           ) : (
             <button
               onClick={onSignIn}
-              className="p-2 rounded-xl bg-[#0a1228]/80 border border-[#00f0ff]/25 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-all"
-              title="Sign in to Supabase"
+              className="p-2 rounded-2xl bg-white/5 hover:bg-white/15 border border-white/10 text-white/80 hover:text-white transition-all"
+              title="Sign in to Admin / Staff Portal"
             >
               <LogIn className="w-4 h-4" />
             </button>
@@ -206,107 +261,37 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
         </div>
       </header>
 
-      {/* Guest View Main Content Container */}
-      <main className="relative z-10 flex-1 max-w-3xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col items-center justify-between space-y-8 sm:space-y-10">
-        {/* WebRTC Voice Session Diagnostic Overlay HUD */}
-        <div className="w-full max-w-2xl bg-[#070e20]/90 border border-[#00f0ff]/30 rounded-2xl p-3 sm:p-4 backdrop-blur-md shadow-[0_0_25px_rgba(0,240,255,0.12)]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-xl bg-[#00f0ff]/10 border border-[#00f0ff]/30 text-[#00f0ff]">
-                <Activity className="w-4 h-4 animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-xs font-mono font-bold text-white flex items-center gap-2">
-                  <span>WebRTC Telemetry Diagnostic</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] uppercase font-mono">
-                    ● Live Stream
-                  </span>
-                </h3>
-                <p className="text-[10px] font-mono text-gray-400">Real-time Voice Session Metrics</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRunPingTest}
-                disabled={isMeasuringPing}
-                className="px-2.5 py-1 rounded-lg bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/30 text-[10px] font-mono font-bold transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50"
-                title="Run diagnostic ping to calculate exact round-trip latency"
-              >
-                <RefreshCw className={`w-3 h-3 ${isMeasuringPing ? 'animate-spin' : ''}`} />
-                <span>Test Ping</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDiagnostics((prev) => !prev)}
-                className="p-1 rounded-lg text-gray-400 hover:text-white transition-colors"
-                title={showDiagnostics ? 'Collapse Telemetry' : 'Expand Telemetry'}
-              >
-                {showDiagnostics ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </div>
+      {/* Guest View Main Sanctuary Container */}
+      <main className="relative z-10 flex-1 max-w-3xl w-full mx-auto px-4 py-6 sm:py-10 flex flex-col items-center justify-between space-y-6 sm:space-y-8">
+        
+        {/* Warm Natural Greeting Banner */}
+        <div className="text-center space-y-2 max-w-xl mx-auto animate-fadeIn">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/90 backdrop-blur-md mb-1 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" style={{ color: activeTheme.accentColor }} />
+            <span>AI Voice Concierge • BAIA Resort</span>
           </div>
-
-          {showDiagnostics && (
-            <div className="mt-3 pt-3 border-t border-[#00f0ff]/15 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded-xl bg-[#0a1228] border border-[#00f0ff]/20">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Round-Trip Latency</p>
-                <p className="text-sm font-bold text-[#00f0ff] mt-0.5 flex items-baseline gap-1">
-                  <span>{liveLatency}</span>
-                  <span className="text-[10px] font-normal text-cyan-200/80">ms</span>
-                </p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#0a1228] border border-[#00f0ff]/20">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Session State</p>
-                <p className="text-xs font-bold text-emerald-400 mt-1 uppercase">
-                  {talaState === 'LISTENING' || talaState === 'SPEAKING' || talaState === 'PROCESSING'
-                    ? 'Connected'
-                    : 'Standby'}
-                </p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#0a1228] border border-[#00f0ff]/20">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Audio Codec</p>
-                <p className="text-xs font-bold text-cyan-300 mt-1">OPUS 24kHz Mono</p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#0a1228] border border-[#00f0ff]/20">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Signal Quality</p>
-                <p className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1">
-                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Optimal</span>
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Welcome Greeting Banner */}
-        <div className="text-center space-y-2 max-w-xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-white tracking-tight leading-tight">
-            Hi, I'm <span className="text-[#00f0ff] font-medium">TALA</span>. How can I assist with your stay?
-          </h2>
-          <p className="text-xs sm:text-sm text-gray-300 font-normal leading-relaxed max-w-md mx-auto">
-            Ask me about room amenities, local transportation, dining recommendations, or activities in San Vicente.
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-normal text-white tracking-tight leading-snug">
+            Mabuhay! I'm <span className="font-semibold" style={{ color: activeTheme.accentColor }}>TALA</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-300 font-light leading-relaxed max-w-md mx-auto">
+            Your personal resort companion. Speak freely with me for island dining, beach adventures, or villa amenities.
           </p>
         </div>
 
-        {/* Centerpiece Interactive Arc Reactor HUD */}
-        <div className="w-full flex justify-center my-2 sm:my-4">
-          <ArcReactorHUD
+        {/* Centerpiece Natural Living Agent Orb */}
+        <div className="w-full flex justify-center py-2">
+          <NaturalAgentOrb
             state={talaState}
             onCoreClick={onCoreClick}
             speechVolume={speechVolume}
-            interimTranscript={interimTranscript}
             isMicActive={talaState === 'LISTENING' || talaState === 'SPEAKING' || talaState === 'PROCESSING' || continuousListening}
             audioStream={audioStream}
-            latencyMs={latencyMs || liveLatency}
+            theme={activeTheme}
+            subtitles={currentSubtitles}
           />
         </div>
 
-        {/* Granular Audio & Speech-Rate Real-Time HUD Sliders */}
+        {/* Compact Real-Time Audio & Speech Rate Controller */}
         <div className="w-full flex justify-center">
           <AudioControlsHUD
             volume={volume}
@@ -315,11 +300,12 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
             onSpeechRateChange={onSpeechRateChange}
             onTestVoice={onTestVoice}
             isSpeaking={talaState === 'SPEAKING'}
+            theme={activeTheme}
           />
         </div>
 
-        {/* Quick Hospitality Action Chips */}
-        <div className="w-full max-w-lg flex flex-wrap items-center justify-center gap-2.5 pt-2">
+        {/* Friendly Hospitality Recommendation Chips */}
+        <div className="w-full max-w-xl flex flex-wrap items-center justify-center gap-2 pt-1">
           {GUEST_QUICK_CHIPS.map((chip, idx) => {
             const Icon = chip.icon;
             return (
@@ -327,17 +313,17 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
                 key={idx}
                 onClick={() => onSendMessage(chip.prompt)}
                 disabled={talaState === 'PROCESSING'}
-                className="px-4 py-2 rounded-xl bg-[#0f1d3a]/90 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/25 text-cyan-100 hover:text-white hover:border-[#00f0ff]/50 transition-all text-xs font-medium backdrop-blur-md shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-2 group"
+                className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-white/90 hover:text-white transition-all text-xs font-normal backdrop-blur-md shadow-sm active:scale-95 disabled:opacity-40 flex items-center gap-2 group"
               >
-                <Icon className="w-3.5 h-3.5 text-[#00f0ff] group-hover:scale-110 transition-transform shrink-0" />
+                <Icon className="w-3.5 h-3.5 group-hover:scale-110 transition-transform shrink-0" style={{ color: activeTheme.accentColor }} />
                 <span>{chip.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Conversation Message Stream */}
-        <div className="w-full max-w-2xl min-h-[160px] max-h-[340px] flex flex-col">
+        {/* Conversation Dialogue Stream */}
+        <div className="w-full max-w-2xl min-h-[140px] max-h-[300px] flex flex-col">
           <ConversationStream
             messages={messages}
             onSpeakText={(text) => onSendMessage(text)}
@@ -345,8 +331,8 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
           />
         </div>
 
-        {/* Bottom Command Bar */}
-        <div className="w-full max-w-2xl bg-[#0f1d3a]/90 border border-[#00f0ff]/25 rounded-2xl p-4 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+        {/* Bottom Organic Command Bar */}
+        <div className="w-full max-w-2xl bg-black/40 border border-white/10 rounded-3xl p-3.5 sm:p-4 backdrop-blur-xl shadow-2xl">
           <CommandBar
             state={talaState}
             onMicToggle={onCoreClick}
@@ -358,9 +344,22 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
         </div>
       </main>
 
-      {/* Guest View Footer */}
-      <footer className="relative z-10 py-4 text-center text-xs font-light text-gray-400 border-t border-[#00f0ff]/10">
-        BAIA Resort San Vicente • TALA Voice Assistant
+      {/* Theme and Custom Photo Wallpaper Modal */}
+      <ThemeSelectorModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+        selectedThemeId={selectedThemeId}
+        onSelectTheme={handleSelectTheme}
+        customBgImage={customBgImage}
+        onUploadCustomBg={handleUploadCustomBg}
+        onRemoveCustomBg={handleRemoveCustomBg}
+        bgDimLevel={bgDimLevel}
+        onChangeBgDimLevel={handleChangeBgDim}
+      />
+
+      {/* Guest View Minimal Footer */}
+      <footer className="relative z-10 py-4 text-center text-xs font-light text-gray-400 border-t border-white/5">
+        BAIA Resort San Vicente, Palawan • TALA Natural Voice Concierge
       </footer>
     </div>
   );
