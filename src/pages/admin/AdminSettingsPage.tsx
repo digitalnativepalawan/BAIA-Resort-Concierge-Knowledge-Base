@@ -10,7 +10,9 @@ import {
   DEFAULT_KNOWLEDGE_MD,
   DEFAULT_KNOWLEDGE_JSON,
   downloadFile,
-  downloadKnowledgeZip
+  downloadKnowledgeZip,
+  downloadTalaBrainMd,
+  downloadAgenticBrainTemplate
 } from '../../data/knowledgeTemplate';
 import {
   Settings,
@@ -37,7 +39,9 @@ import {
   FileJson,
   Download,
   FolderArchive,
-  Upload
+  Upload,
+  FolderTree,
+  Zap
 } from 'lucide-react';
 
 interface AdminSettingsPageProps {
@@ -79,6 +83,18 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const [runningTestSuite, setRunningTestSuite] = useState<boolean>(false);
   const [knowledgeNotice, setKnowledgeNotice] = useState<string | null>(null);
   const settingsFileInputRef = useRef<HTMLInputElement>(null);
+  const settingsFolderInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadMasterBrain = () => {
+    let faqs: any[] = [];
+    try {
+      const saved = localStorage.getItem('tala_guest_faqs');
+      if (saved) faqs = JSON.parse(saved);
+    } catch (e) {}
+    downloadTalaBrainMd(knowledgeFiles, faqs);
+    setKnowledgeNotice('Downloaded TALA Agentic Knowledge Brain (tala_knowledge_brain.md)!');
+    setTimeout(() => setKnowledgeNotice(null), 4000);
+  };
 
   const handleDownloadFullTxt = () => {
     let text = DEFAULT_KNOWLEDGE_TXT;
@@ -588,28 +604,54 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         </div>
       </section>
 
-      {/* SECTION 4: GROUNDING KNOWLEDGE BASE */}
-      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-4 backdrop-blur-md shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#00f0ff]/15">
+      {/* SECTION 4: GROUNDING KNOWLEDGE BASE & MASTER BRAIN */}
+      <section className="bg-[#0f1d3a]/80 border border-[#00f0ff]/20 rounded-2xl p-6 space-y-5 backdrop-blur-md shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#00f0ff]/15">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00f0ff]/10 text-[#00f0ff]">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-medium text-white">Grounding Knowledge Base</h2>
+              <h2 className="text-lg font-medium text-white flex items-center gap-2">
+                <span>Grounding Knowledge Base & Agentic Brain</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-emerald-400" />
+                  Live Grounding
+                </span>
+              </h2>
               <p className="text-xs text-gray-400 font-normal">
-                Upload knowledge files from your local device to wire directly into TALA's AI brain.
+                Upload knowledge files or ICM folders to wire directly into TALA's autonomous AI brain.
               </p>
             </div>
           </div>
 
-          <button
-            onClick={() => downloadKnowledgeZip(knowledgeFiles)}
-            className="px-4 py-2 rounded-xl bg-[#070e20] border border-[#00f0ff]/30 text-[#00f0ff] hover:bg-[#00f0ff]/10 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shrink-0 transition-all"
-          >
-            <Download className="w-4 h-4" />
-            <span>Download Knowledge Backup (.zip)</span>
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* 1-BUTTON TEMPLATE DOWNLOAD */}
+            <button
+              type="button"
+              onClick={() => {
+                downloadAgenticBrainTemplate();
+                setKnowledgeNotice('Downloaded Agentic Brain Template (tala_agentic_brain_template.md). Fill it out and upload to feed TALA!');
+                setTimeout(() => setKnowledgeNotice(null), 5000);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-[#070e20] hover:bg-[#13234d] text-[#00f0ff] border border-[#00f0ff]/40 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shrink-0 transition-all cursor-pointer"
+              title="Download pre-structured Agentic Knowledge Template to fill and upload"
+            >
+              <Download className="w-4 h-4 text-[#00f0ff]" />
+              <span>Download Brain Template (.md)</span>
+            </button>
+
+            {/* PRIMARY BUTTON: UPLOAD TO TALA BRAIN */}
+            <button
+              type="button"
+              onClick={() => settingsFileInputRef.current?.click()}
+              className="px-5 py-2.5 rounded-xl bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shrink-0 transition-all shadow-[0_0_20px_rgba(0,240,255,0.35)] cursor-pointer"
+              title="Upload knowledge files, folders, or markdown to feed TALA's AI Brain"
+            >
+              <Upload className="w-4 h-4 text-slate-950" />
+              <span>Upload to TALA Brain</span>
+            </button>
+          </div>
         </div>
 
         {knowledgeNotice && (
@@ -619,36 +661,92 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           </div>
         )}
 
-        <div className="bg-[#070e20] border-2 border-dashed border-[#00f0ff]/30 rounded-2xl p-6 text-center space-y-3">
+        {/* DUAL UPLOAD ACTIONS: FOLDER vs FILES */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => settingsFolderInputRef.current?.click()}
+            className="p-4 rounded-xl bg-[#070e20] hover:bg-[#0d1838] border border-[#00f0ff]/30 text-left transition-all group cursor-pointer flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff] group-hover:bg-[#00f0ff] group-hover:text-slate-950 transition-colors">
+                <FolderTree className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white group-hover:text-[#00f0ff] transition-colors">
+                  Upload ICM / Modular Folder
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  Upload entire folder hierarchy (e.g. <span className="font-mono text-gray-300">01_dining/</span>, <span className="font-mono text-gray-300">02_rooms/</span>)
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-semibold px-2 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20">
+              Folder
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => settingsFileInputRef.current?.click()}
+            className="p-4 rounded-xl bg-[#070e20] hover:bg-[#0d1838] border border-gray-700 hover:border-[#00f0ff]/40 text-left transition-all group cursor-pointer flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-400 group-hover:text-slate-950 transition-colors">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                  Upload Knowledge Files / ZIP
+                </h3>
+                <p className="text-[11px] text-gray-400">
+                  Supports .icm, .md, .txt, .json, .zip, .pdf, .docx, .csv
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Files
+            </span>
+          </button>
+        </div>
+
+        <div className="bg-[#070e20] border-2 border-dashed border-[#00f0ff]/20 rounded-2xl p-5 text-center space-y-2">
           <input
             type="file"
             ref={settingsFileInputRef}
             multiple
-            accept=".json,.txt,.png,.jpg,.jpeg,.zip,.pdf,.md,.docx,.csv"
+            accept=".icm,.md,.markdown,.txt,.png,.jpg,.jpeg,.zip,.pdf,.docx,.doc,.csv"
             onChange={(e) => {
               if (e.target.files && onUploadKnowledgeFile) {
                 Array.from(e.target.files).forEach((f) => onUploadKnowledgeFile(f, 'Property'));
-                setKnowledgeNotice(`Uploaded ${e.target.files.length} knowledge source(s) from device!`);
+                setKnowledgeNotice(`Uploaded ${e.target.files.length} knowledge file(s) into TALA!`);
+                setTimeout(() => setKnowledgeNotice(null), 4000);
+              }
+            }}
+            className="hidden"
+          />
+          <input
+            type="file"
+            ref={settingsFolderInputRef}
+            // @ts-ignore
+            webkitdirectory=""
+            directory=""
+            multiple
+            onChange={(e) => {
+              if (e.target.files && onUploadKnowledgeFile) {
+                Array.from(e.target.files).forEach((f) => onUploadKnowledgeFile(f, 'Property'));
+                setKnowledgeNotice(`Uploaded ${e.target.files.length} knowledge file(s) from folder into TALA!`);
                 setTimeout(() => setKnowledgeNotice(null), 4000);
               }
             }}
             className="hidden"
           />
 
-          <button
-            type="button"
-            onClick={() => settingsFileInputRef.current?.click()}
-            className="px-8 py-3.5 rounded-2xl bg-[#00f0ff] text-black font-black text-sm uppercase tracking-wider hover:bg-[#00f0ff]/80 transition-all shadow-[0_0_20px_rgba(0,240,255,0.35)] flex items-center justify-center gap-3 mx-auto cursor-pointer"
-          >
-            <Upload className="w-5 h-5 text-black" />
-            <span>UPLOAD KNOWLEDGE FROM DEVICE</span>
-          </button>
-
           <p className="text-xs font-bold text-[#00f0ff] uppercase tracking-wider">
-            Supported: JSON · TXT · PNG · JPG · JPEG · ZIP
+            Supports: .MD · .ICM · .TXT · .JSON · .ZIP · .PDF · .DOCX · .CSV · FOLDERS
           </p>
           <p className="text-xs text-gray-400">
-            {knowledgeFiles.length} active knowledge files currently wired into TALA
+            {knowledgeFiles.length} active knowledge sources currently wired into TALA's AI brain
           </p>
         </div>
       </section>

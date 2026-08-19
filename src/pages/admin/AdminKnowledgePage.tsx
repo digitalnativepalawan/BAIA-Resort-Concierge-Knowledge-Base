@@ -3,6 +3,7 @@ import { ChatMessage, KnowledgeFile, KnowledgeCategory, KnowledgeProcessingStatu
 import { INITIAL_GUEST_FAQS, FaqItem } from '../../data/defaultFaqs';
 import { knowledgeService } from '../../services/knowledgeService';
 import { settingsService } from '../../services/settingsService';
+import { downloadTalaBrainMd, downloadKnowledgeZip, downloadAgenticBrainTemplate } from '../../data/knowledgeTemplate';
 import {
   BookOpen,
   Upload,
@@ -31,7 +32,9 @@ import {
   FileJson,
   Sparkles,
   HelpCircle,
-  Database
+  Database,
+  FolderTree,
+  Zap
 } from 'lucide-react';
 
 interface AdminKnowledgePageProps {
@@ -155,7 +158,15 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
   const [docSearch, setDocSearch] = useState<string>('');
   const [docCategoryFilter, setDocCategoryFilter] = useState<'All' | KnowledgeCategory>('All');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  // Single-Click Master Knowledge Brain Download
+  const handleDownloadBrainMd = () => {
+    downloadTalaBrainMd(localFiles, faqs);
+    setNoticeMessage('Downloaded unified TALA Agentic Knowledge Brain (tala_knowledge_brain.md)!');
+    setTimeout(() => setNoticeMessage(null), 4000);
+  };
 
   // Filtered FAQs
   const filteredFaqs = useMemo(() => {
@@ -395,35 +406,31 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
 
   // Handle File Upload
   const handleFilesUpload = async (uploadFiles: FileList | File[]) => {
-    setUploadNotice('Parsing & embedding knowledge files...');
+    setUploadNotice('Parsing, indexing & embedding knowledge into TALA Brain...');
     const fileList = Array.from(uploadFiles);
+    let processedCount = 0;
 
     for (const file of fileList) {
       try {
-        const text = await file.text();
-        const ext = file.name.split('.').pop()?.toUpperCase() || 'TXT';
-
-        const newDoc: KnowledgeFile = {
-          id: `file-kb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          name: file.name,
-          size: file.size,
-          content: text || `[Embedded Source Attachment: ${file.name}]`,
-          type: file.type || 'text/plain',
-          fileType: ext,
-          uploadedAt: new Date().toISOString(),
-          category: uploadCategory,
-          status: 'Ready'
-        };
-
-        await knowledgeService.saveDoc(newDoc);
-        setLocalFiles((prev) => [newDoc, ...prev]);
+        const ext = file.name.split('.').pop()?.toUpperCase() || '';
+        if (ext === 'ZIP') {
+          const res = await knowledgeService.processZipFile(file, uploadCategory);
+          if (res.processedDocs.length > 0) {
+            setLocalFiles((prev) => [...res.processedDocs, ...prev]);
+            processedCount += res.processedDocs.length;
+          }
+        } else {
+          const doc = await knowledgeService.processAndSaveFile(file, uploadCategory);
+          setLocalFiles((prev) => [doc, ...prev]);
+          processedCount++;
+        }
       } catch (err) {
-        console.error('Error uploading file:', err);
+        console.error('Error uploading knowledge file:', err);
       }
     }
 
     setUploadNotice(null);
-    setNoticeMessage(`Successfully uploaded and indexed ${fileList.length} file(s)!`);
+    setNoticeMessage(`Successfully uploaded and indexed ${processedCount} file(s) into TALA Knowledge Brain!`);
     setTimeout(() => setNoticeMessage(null), 4000);
   };
 
@@ -444,26 +451,56 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
               </div>
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                  <span>Guest Knowledge Base & Agent Settings</span>
+                  <span>Guest Knowledge Base & Agentic Brain</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-emerald-400" />
+                    Agentic Dispatch Active
+                  </span>
                 </h1>
                 <p className="text-xs text-gray-400">
-                  Manage TALA's AI brain model behavior, Guest FAQ memory, and grounded resort documentation.
+                  Manage TALA's AI brain model behavior, Guest FAQ memory, ICM folder hierarchy, and grounded resort documentation.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* PRIMARY BUTTON: UPLOAD TO TALA BRAIN */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2.5 rounded-xl bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(0,240,255,0.35)] transition-all cursor-pointer"
+              title="Upload knowledge files, folders, or markdown to feed TALA's AI Brain"
+            >
+              <Upload className="w-4 h-4 text-slate-950" />
+              <span>Upload to TALA Brain</span>
+            </button>
+
+            {/* TEMPLATE DOWNLOAD BUTTON NEXT TO IT */}
+            <button
+              type="button"
+              onClick={() => {
+                downloadAgenticBrainTemplate();
+                setNoticeMessage('Downloaded Agentic Brain Template (tala_agentic_brain_template.md). Fill it in and click "Upload to TALA Brain" to feed TALA!');
+                setTimeout(() => setNoticeMessage(null), 5000);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-[#152347] hover:bg-[#1f3264] text-[#00f0ff] border border-[#00f0ff]/40 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer"
+              title="Download structured template with agentic action triggers, resort grounding, and FAQ formats"
+            >
+              <Download className="w-4 h-4 text-[#00f0ff]" />
+              <span>Download Brain Template (.md)</span>
+            </button>
+
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className={`px-3.5 py-2 rounded-xl font-semibold text-xs flex items-center gap-2 border transition-all ${
+              className={`px-3.5 py-2.5 rounded-xl font-semibold text-xs flex items-center gap-2 border transition-all ${
                 showSettings
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                   : 'bg-[#152347] text-gray-300 border-gray-700 hover:text-white'
               }`}
             >
               <Settings className="w-4 h-4" />
-              <span>{showSettings ? 'Hide Agent Settings' : 'Agent Settings'}</span>
+              <span>{showSettings ? 'Hide Settings' : 'Agent Settings'}</span>
             </button>
           </div>
         </div>
@@ -1032,33 +1069,107 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
       {/* TAB 3: KNOWLEDGE FILES & UPLOAD */}
       {activeTab === 'documents' && (
         <div className="space-y-6">
-          {/* FILE UPLOAD BOX */}
+          {/* FILE & FOLDER UPLOAD BOX */}
           <div className="bg-[#0b1329] border border-[#00f0ff]/30 rounded-2xl p-6 space-y-4 shadow-xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-gray-800">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-gray-800">
               <div>
                 <h2 className="text-base font-bold text-white flex items-center gap-2">
                   <Upload className="w-5 h-5 text-[#00f0ff]" />
-                  <span>Upload Knowledge Files</span>
+                  <span>Upload Knowledge & ICM Modular Folders</span>
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Upload resort guides, PDFs, TXT, JSON, MD, or CSV files to index into TALA's grounded vector memory.
+                  Upload resort guides, ICM folders, Markdown files, PDFs, TXT, JSON, or ZIP archives to index into TALA's grounded vector brain.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <label className="text-xs font-semibold text-gray-300">Target Category:</label>
-                <select
-                  value={uploadCategory}
-                  onChange={(e) => setUploadCategory(e.target.value as KnowledgeCategory)}
-                  className="bg-[#121c38] border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* 1-BUTTON TEMPLATE DOWNLOAD */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadAgenticBrainTemplate();
+                    setNoticeMessage('Downloaded Agentic Brain Template (tala_agentic_brain_template.md). Fill it out and upload to feed TALA!');
+                    setTimeout(() => setNoticeMessage(null), 5000);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-[#152347] hover:bg-[#1f3264] text-[#00f0ff] border border-[#00f0ff]/40 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer"
                 >
-                  {RESORT_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                  <Download className="w-4 h-4 text-[#00f0ff]" />
+                  <span>Download Brain Template (.md)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-[#00f0ff] hover:bg-[#00f0ff]/80 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-[#00f0ff]/20 transition-all cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-slate-950" />
+                  <span>Upload to TALA Brain</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-300">Default Category:</label>
+                  <select
+                    value={uploadCategory}
+                    onChange={(e) => setUploadCategory(e.target.value as KnowledgeCategory)}
+                    className="bg-[#121c38] border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00f0ff]"
+                  >
+                    {RESORT_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+            </div>
+
+            {/* ACTION BUTTONS: FOLDER vs INDIVIDUAL FILES */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => folderInputRef.current?.click()}
+                className="p-4 rounded-xl bg-[#101b38] hover:bg-[#16254e] border border-[#00f0ff]/30 text-left transition-all group cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-[#00f0ff]/10 text-[#00f0ff] group-hover:bg-[#00f0ff] group-hover:text-slate-950 transition-colors">
+                    <FolderTree className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white group-hover:text-[#00f0ff] transition-colors">
+                      Upload ICM / Modular Folder
+                    </h3>
+                    <p className="text-[11px] text-gray-400">
+                      Upload entire folder directory (e.g. <span className="font-mono text-gray-300">dining/</span>, <span className="font-mono text-gray-300">rooms/</span>)
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-semibold px-2 py-1 rounded bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/20">
+                  Folder
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-4 rounded-xl bg-[#101b38] hover:bg-[#16254e] border border-gray-700 hover:border-[#00f0ff]/40 text-left transition-all group cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-400 group-hover:text-slate-950 transition-colors">
+                    <FileUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                      Upload Knowledge Files / ZIP
+                    </h3>
+                    <p className="text-[11px] text-gray-400">
+                      Supports .md, .icm, .txt, .json, .zip, .pdf, .docx, .csv
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-semibold px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Files
+                </span>
+              </button>
             </div>
 
             {/* DRAG & DROP ZONE */}
@@ -1073,22 +1184,33 @@ export const AdminKnowledgePage: React.FC<AdminKnowledgePageProps> = ({
                 setDragActive(false);
                 if (e.dataTransfer.files) handleFilesUpload(e.dataTransfer.files);
               }}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
+              className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
                 dragActive ? 'border-[#00f0ff] bg-[#00f0ff]/10' : 'border-gray-800 bg-[#0d1633] hover:border-gray-700'
               }`}
               onClick={() => fileInputRef.current?.click()}
             >
-              <FileUp className="w-10 h-10 text-[#00f0ff] mx-auto mb-3" />
+              <FileUp className="w-8 h-8 text-[#00f0ff] mx-auto mb-2" />
               <p className="text-xs font-bold text-white">
-                Drag & Drop files here, or <span className="text-[#00f0ff] underline">browse computer</span>
+                Drag & Drop ICM folders or files here, or <span className="text-[#00f0ff] underline">browse local computer</span>
               </p>
               <p className="text-[11px] text-gray-400 mt-1">
-                Supports PDF, TXT, MD, JSON, DOCX, CSV (Max 25MB per file)
+                Preserves folder categories and indexes all sub-documents seamlessly without breaking code.
               </p>
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={(e) => e.target.files && handleFilesUpload(e.target.files)}
+                multiple
+                accept=".icm,.md,.markdown,.txt,.json,.zip,.pdf,.docx,.doc,.csv"
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={folderInputRef}
+                onChange={(e) => e.target.files && handleFilesUpload(e.target.files)}
+                // @ts-ignore
+                webkitdirectory=""
+                directory=""
                 multiple
                 className="hidden"
               />

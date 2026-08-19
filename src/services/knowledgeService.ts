@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 
 const KNOWLEDGE_TABLE = 'knowledge_documents';
 
-const SUPPORTED_EXTENSIONS = ['JSON', 'TXT', 'PNG', 'JPG', 'JPEG', 'ZIP', 'PDF', 'MD', 'DOCX', 'DOC', 'CSV'];
+const SUPPORTED_EXTENSIONS = ['JSON', 'TXT', 'PNG', 'JPG', 'JPEG', 'ZIP', 'PDF', 'MD', 'MARKDOWN', 'ICM', 'DOCX', 'DOC', 'CSV'];
 
 function detectFileType(file: File): string {
   const ext = file.name.split('.').pop()?.toUpperCase() || '';
@@ -14,10 +14,47 @@ function detectFileType(file: File): string {
   if (['PDF'].includes(ext)) return 'PDF';
   if (['DOCX', 'DOC'].includes(ext)) return 'DOCX';
   if (['MD', 'MARKDOWN'].includes(ext)) return 'MD';
+  if (['ICM'].includes(ext)) return 'ICM';
   if (['JSON'].includes(ext)) return 'JSON';
   if (['CSV'].includes(ext)) return 'CSV';
   if (['TXT', 'TEXT'].includes(ext)) return 'TXT';
   return ext || 'UNKNOWN';
+}
+
+function inferCategoryFromPath(relativePath: string, fallback: KnowledgeCategory = 'Property'): KnowledgeCategory {
+  if (!relativePath) return fallback;
+  const lower = relativePath.toLowerCase();
+  if (lower.includes('food') || lower.includes('dining') || lower.includes('breakfast') || lower.includes('menu') || lower.includes('restaurant')) {
+    return 'Food & Breakfast';
+  }
+  if (lower.includes('room') || lower.includes('villa') || lower.includes('suite') || lower.includes('cottage')) {
+    return 'Rooms';
+  }
+  if (lower.includes('tour') || lower.includes('activity') || lower.includes('island') || lower.includes('surf')) {
+    return 'Tours & Activities';
+  }
+  if (lower.includes('transport') || lower.includes('transfer') || lower.includes('airport') || lower.includes('shuttle') || lower.includes('scooter') || lower.includes('van')) {
+    return 'Transportation';
+  }
+  if (lower.includes('housekeeping') || lower.includes('laundry') || lower.includes('towel') || lower.includes('linen')) {
+    return 'Housekeeping';
+  }
+  if (lower.includes('rule') || lower.includes('policy') || lower.includes('quiet') || lower.includes('smoke') || lower.includes('pet')) {
+    return 'House Rules';
+  }
+  if (lower.includes('checkin') || lower.includes('checkout') || lower.includes('check-in') || lower.includes('check-out')) {
+    return 'Check-in & Checkout';
+  }
+  if (lower.includes('emergency') || lower.includes('hospital') || lower.includes('police') || lower.includes('doctor')) {
+    return 'Emergency Information';
+  }
+  if (lower.includes('maintenance') || lower.includes('wifi') || lower.includes('ac') || lower.includes('plumb')) {
+    return 'Maintenance';
+  }
+  if (lower.includes('area') || lower.includes('san vicente') || lower.includes('palawan') || lower.includes('port barton')) {
+    return 'Local Area';
+  }
+  return fallback;
 }
 
 async function extractTextFromFile(file: File): Promise<string> {
@@ -25,14 +62,14 @@ async function extractTextFromFile(file: File): Promise<string> {
   const ext = file.name.split('.').pop()?.toUpperCase() || '';
 
   if (!SUPPORTED_EXTENSIONS.includes(ext) && !SUPPORTED_EXTENSIONS.includes(fileType)) {
-    throw new Error(`Unsupported file type ".${ext.toLowerCase()}". Allowed formats: JSON, TXT, PNG, JPG, JPEG, ZIP, PDF, MD, DOCX, CSV.`);
+    throw new Error(`Unsupported file type ".${ext.toLowerCase()}". Allowed formats: JSON, TXT, PNG, JPG, JPEG, ZIP, PDF, MD, ICM, DOCX, CSV.`);
   }
 
   if (fileType === 'IMAGE') {
     return `[Visual Source Attachment]: ${file.name}\nFile Size: ${(file.size / 1024).toFixed(1)} KB\nFormat: ${ext}\nNote: Image file stored as source attachment in TALA Knowledge Base. Requires OCR/vision processing for embedded text parsing.`;
   }
 
-  if (['TXT', 'MD', 'JSON', 'CSV'].includes(fileType) || file.type.startsWith('text/')) {
+  if (['TXT', 'MD', 'ICM', 'JSON', 'CSV'].includes(fileType) || file.type.startsWith('text/')) {
     const rawText = await file.text();
     if (fileType === 'JSON') {
       try {
@@ -193,14 +230,15 @@ export const knowledgeService = {
         const baseName = entryName.split('/').pop() || entryName;
         const ext = baseName.split('.').pop()?.toLowerCase() || '';
 
-        if (['json', 'txt', 'png', 'jpg', 'jpeg', 'pdf', 'md', 'docx', 'doc', 'csv'].includes(ext)) {
+        if (['json', 'txt', 'png', 'jpg', 'jpeg', 'pdf', 'md', 'markdown', 'icm', 'docx', 'doc', 'csv'].includes(ext)) {
           try {
             const contentBlob = await zipEntry.async('blob');
             const extractedFile = new File([contentBlob], baseName, {
               type: ext === 'json' ? 'application/json' : ext === 'txt' ? 'text/plain' : 'application/octet-stream',
             });
 
-            const doc = await knowledgeService.processAndSaveFile(extractedFile, category, onProgress);
+            const resolvedCategory = inferCategoryFromPath(entryName, category);
+            const doc = await knowledgeService.processAndSaveFile(extractedFile, resolvedCategory, onProgress);
             processedDocs.push(doc);
             if (doc.status === 'Ready' || doc.status === 'Needs Review') {
               acceptedCount++;
@@ -229,6 +267,8 @@ export const knowledgeService = {
     const docId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const fileType = detectFileType(file);
     const nowStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const relativePath = (file as any).webkitRelativePath || file.name;
+    const finalCategory = (file as any).webkitRelativePath ? inferCategoryFromPath(relativePath, category) : category;
 
     let doc: KnowledgeFile = {
       id: docId,
@@ -239,7 +279,7 @@ export const knowledgeService = {
       content: '',
       uploadedAt: nowStr,
       lastUpdated: nowStr,
-      category,
+      category: finalCategory,
       status: 'Selected',
       chunkCount: 0,
       embeddingStatus: 'Pending',
