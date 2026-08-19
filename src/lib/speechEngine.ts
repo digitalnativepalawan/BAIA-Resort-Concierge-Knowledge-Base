@@ -132,7 +132,8 @@ function speakWebSpeech(
   pitch = 1.0,
   rate = 1.0,
   onEnd?: () => void,
-  resolve?: () => void
+  resolve?: () => void,
+  volume = 1.0
 ) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     if (onEnd) onEnd();
@@ -167,6 +168,7 @@ function speakWebSpeech(
 
   utterance.pitch = adjustedPitch;
   utterance.rate = adjustedRate;
+  utterance.volume = typeof volume === 'number' ? Math.max(0, Math.min(1, volume)) : 1.0;
 
   const voices = window.speechSynthesis.getVoices();
   let selected: SpeechSynthesisVoice | undefined;
@@ -575,7 +577,8 @@ export const speechEngine = {
     voiceName?: string,
     pitch = 1.0,
     rate = 1.0,
-    onEnd?: () => void
+    onEnd?: () => void,
+    volume = 1.0
   ): Promise<void> => {
     return new Promise((resolve) => {
       // Validate queue and log selection event
@@ -589,7 +592,7 @@ export const speechEngine = {
       }
 
       // Use browser high-fidelity SpeechSynthesis engine
-      speakWebSpeech(cleanedText, voiceName, pitch, rate, onEnd, resolve);
+      speakWebSpeech(cleanedText, voiceName, pitch, rate, onEnd, resolve, volume);
     });
   },
 
@@ -601,7 +604,8 @@ export const speechEngine = {
     voiceName?: string,
     pitch = 1.0,
     rate = 1.0,
-    onEnd?: () => void
+    onEnd?: () => void,
+    volume = 1.0
   ): Promise<void> => {
     const cleaned = cleanTextForSpeech(text);
     if (!cleaned) {
@@ -616,7 +620,7 @@ export const speechEngine = {
       .filter((s) => s.length > 0);
 
     if (sentences.length <= 1) {
-      return speechEngine.speakText(cleaned, voiceName, pitch, rate, onEnd);
+      return speechEngine.speakText(cleaned, voiceName, pitch, rate, onEnd, volume);
     }
 
     for (let i = 0; i < sentences.length; i++) {
@@ -628,7 +632,8 @@ export const speechEngine = {
           pitch,
           rate,
           isLast ? onEnd : undefined,
-          res
+          res,
+          volume
         );
       });
     }

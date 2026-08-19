@@ -48,6 +48,7 @@ export interface VoiceOption {
 export interface TalaSettings {
   pitch: number;
   rate: number;
+  volume?: number;
   selectedVoiceName: string;
   openrouterApiKey: string;
   selectedOpenRouterModel: string;

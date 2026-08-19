@@ -97,6 +97,7 @@ export default function App() {
     return {
       pitch: 1.0,
       rate: 1.0,
+      volume: 1.0,
       selectedVoiceName: '',
       openrouterApiKey: openrouterKey,
       selectedOpenRouterModel: selectedOpenRouterModel,
@@ -370,6 +371,8 @@ export default function App() {
         }
       });
 
+      const volume = typeof settings.volume === 'number' ? settings.volume : 1.0;
+
       speechEngine.speakSentenceChunks(
         cleanedText,
         selectedVoice,
@@ -392,11 +395,12 @@ export default function App() {
               }
             }, 100);
           }
-        }
+        },
+        volume
       );
 
     },
-    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.continuousListening, addLog, setupMicBargeInListener]
+    [settings.selectedVoiceName, settings.pitch, settings.rate, settings.volume, settings.continuousListening, addLog, setupMicBargeInListener]
   );
 
   const stopListening = useCallback(() => {
@@ -887,6 +891,23 @@ export default function App() {
               onToggleSound={() => setSettings((prev) => ({ ...prev, soundEnabled: !prev.soundEnabled }))}
               audioStream={realtimeVoiceSession.audioStream || undefined}
               latencyMs={realtimeVoiceSession.latencyMs}
+              volume={typeof settings.volume === 'number' ? settings.volume : 1.0}
+              onVolumeChange={(newVol) => {
+                setSettings((prev) => {
+                  const updated = { ...prev, volume: newVol };
+                  settingsService.saveSettings(updated);
+                  return updated;
+                });
+              }}
+              speechRate={typeof settings.rate === 'number' ? settings.rate : 1.0}
+              onSpeechRateChange={(newRate) => {
+                setSettings((prev) => {
+                  const updated = { ...prev, rate: newRate };
+                  settingsService.saveSettings(updated);
+                  return updated;
+                });
+              }}
+              onTestVoice={handleTestVoiceDiagnostic}
             />
           }
         />

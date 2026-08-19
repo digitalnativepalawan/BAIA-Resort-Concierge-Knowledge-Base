@@ -489,8 +489,24 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             </div>
           </div>
 
-          {/* Pitch & Rate Sliders */}
+          {/* Volume, Pitch & Rate Sliders */}
           <div className="space-y-4 bg-[#050b14]/70 p-4 rounded-xl border border-[#00f0ff]/15">
+            <div>
+              <div className="flex justify-between text-xs text-gray-300 mb-1.5 font-medium">
+                <span>SPEECH VOLUME ({Math.round((settings.volume ?? 1.0) * 100)}%)</span>
+                <span className="text-[#00f0ff]/90 font-normal">Audio Output Level</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={settings.volume ?? 1.0}
+                onChange={(e) => onUpdateSettings({ volume: parseFloat(e.target.value) })}
+                className="w-full accent-[#00f0ff] cursor-pointer"
+              />
+            </div>
+
             <div>
               <div className="flex justify-between text-xs text-gray-300 mb-1.5 font-medium">
                 <span>PITCH ({settings.pitch.toFixed(1)})</span>
@@ -509,14 +525,14 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
 
             <div>
               <div className="flex justify-between text-xs text-gray-300 mb-1.5 font-medium">
-                <span>SPEED RATE ({settings.rate.toFixed(1)}x)</span>
+                <span>SPEED RATE ({settings.rate.toFixed(2)}x)</span>
                 <span className="text-[#00f0ff]/90 font-normal">Slow / Fast Pace</span>
               </div>
               <input
                 type="range"
                 min="0.5"
-                max="1.5"
-                step="0.1"
+                max="2.0"
+                step="0.05"
                 value={settings.rate}
                 onChange={(e) => onUpdateSettings({ rate: parseFloat(e.target.value) })}
                 className="w-full accent-[#00f0ff] cursor-pointer"

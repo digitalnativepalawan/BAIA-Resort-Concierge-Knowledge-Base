@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArcReactorHUD } from '../components/ArcReactorHUD';
+import { AudioControlsHUD } from '../components/AudioControlsHUD';
 import { ConversationStream } from '../components/ConversationStream';
 import { CommandBar } from '../components/CommandBar';
 import { DualTelemetryClocks } from '../components/DualTelemetryClocks';
@@ -44,6 +45,11 @@ interface GuestConciergeProps {
   onToggleSound: () => void;
   latencyMs?: number | null;
   audioStream?: MediaStream | null;
+  volume?: number;
+  onVolumeChange?: (volume: number) => void;
+  speechRate?: number;
+  onSpeechRateChange?: (rate: number) => void;
+  onTestVoice?: () => void;
 }
 
 const GUEST_QUICK_CHIPS = [
@@ -90,7 +96,12 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
   soundEnabled,
   onToggleSound,
   latencyMs,
-  audioStream
+  audioStream,
+  volume = 1.0,
+  onVolumeChange,
+  speechRate = 1.0,
+  onSpeechRateChange,
+  onTestVoice
 }) => {
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true);
   const [liveLatency, setLiveLatency] = useState<number>(latencyMs || 24);
@@ -292,6 +303,18 @@ export const GuestConcierge: React.FC<GuestConciergeProps> = ({
             isMicActive={talaState === 'LISTENING' || talaState === 'SPEAKING' || talaState === 'PROCESSING' || continuousListening}
             audioStream={audioStream}
             latencyMs={latencyMs || liveLatency}
+          />
+        </div>
+
+        {/* Granular Audio & Speech-Rate Real-Time HUD Sliders */}
+        <div className="w-full flex justify-center">
+          <AudioControlsHUD
+            volume={volume}
+            onVolumeChange={onVolumeChange}
+            speechRate={speechRate}
+            onSpeechRateChange={onSpeechRateChange}
+            onTestVoice={onTestVoice}
+            isSpeaking={talaState === 'SPEAKING'}
           />
         </div>
 
